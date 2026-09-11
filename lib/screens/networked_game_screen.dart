@@ -3,17 +3,17 @@ import 'package:pilotta_engine/pilotta_engine.dart';
 import 'package:pilotta_protocol/pilotta_protocol.dart';
 import 'package:provider/provider.dart';
 
-import '../controllers/online_game_controller.dart';
+import '../controllers/room_client_controller.dart';
 import '../widgets/bidding_panel.dart';
 import '../widgets/playing_card_widget.dart';
 import '../widgets/seat_layout.dart';
 
-class OnlineGameScreen extends StatelessWidget {
-  const OnlineGameScreen({super.key});
+class NetworkedGameScreen extends StatelessWidget {
+  const NetworkedGameScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final controller = context.watch<OnlineGameController>();
+    final controller = context.watch<RoomClientController>();
 
     if (!controller.inRoom) {
       return Scaffold(
@@ -62,7 +62,7 @@ class _ConnectingError extends StatelessWidget {
 }
 
 class _LobbyWaitingRoom extends StatelessWidget {
-  final OnlineGameController controller;
+  final RoomClientController controller;
   const _LobbyWaitingRoom({required this.controller});
 
   @override
@@ -152,7 +152,7 @@ class _SeatRow extends StatelessWidget {
 }
 
 class _OnlineTable extends StatelessWidget {
-  final OnlineGameController controller;
+  final RoomClientController controller;
   const _OnlineTable({required this.controller});
 
   @override
@@ -207,7 +207,7 @@ class _OnlineTable extends StatelessWidget {
 }
 
 class _OnlineScoreHeader extends StatelessWidget {
-  final OnlineGameController controller;
+  final RoomClientController controller;
   const _OnlineScoreHeader({required this.controller});
 
   @override
@@ -253,7 +253,7 @@ class _OnlineScoreHeader extends StatelessWidget {
 }
 
 class _OnlineTableArea extends StatelessWidget {
-  final OnlineGameController controller;
+  final RoomClientController controller;
   const _OnlineTableArea({required this.controller});
 
   @override
@@ -278,7 +278,7 @@ class _OnlineTableArea extends StatelessWidget {
 }
 
 class _OnlineOpponentSeat extends StatelessWidget {
-  final OnlineGameController controller;
+  final RoomClientController controller;
   final Seat seat;
   const _OnlineOpponentSeat({required this.controller, required this.seat});
 
@@ -330,7 +330,7 @@ class _OnlineOpponentSeat extends StatelessWidget {
 }
 
 class _OnlineTrickArea extends StatelessWidget {
-  final OnlineGameController controller;
+  final RoomClientController controller;
   const _OnlineTrickArea({required this.controller});
 
   @override
@@ -364,7 +364,7 @@ class _OnlineAuctionStatus extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<OnlineGameController>(
+    return Consumer<RoomClientController>(
       builder: (context, controller, _) {
         final auction = controller.auction;
         if (auction == null) return const SizedBox.shrink();
@@ -397,7 +397,7 @@ class _OnlineAuctionStatus extends StatelessWidget {
 }
 
 class _OnlineHumanHand extends StatelessWidget {
-  final OnlineGameController controller;
+  final RoomClientController controller;
   const _OnlineHumanHand({required this.controller});
 
   @override
@@ -451,7 +451,7 @@ class _OnlineHumanHand extends StatelessWidget {
 }
 
 class _OnlineHandSummaryOverlay extends StatelessWidget {
-  final OnlineGameController controller;
+  final RoomClientController controller;
   const _OnlineHandSummaryOverlay({required this.controller});
 
   @override
@@ -530,7 +530,7 @@ class _OnlineHandSummaryOverlay extends StatelessWidget {
 }
 
 class _OnlineMatchOverOverlay extends StatelessWidget {
-  final OnlineGameController controller;
+  final RoomClientController controller;
   const _OnlineMatchOverOverlay({required this.controller});
 
   @override

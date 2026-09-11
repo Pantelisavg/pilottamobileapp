@@ -3,7 +3,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pilotta/controllers/online_game_controller.dart';
-import 'package:pilotta/screens/online_game_screen.dart';
+import 'package:pilotta/controllers/room_client_controller.dart';
+import 'package:pilotta/screens/networked_game_screen.dart';
 import 'package:pilotta_engine/pilotta_engine.dart';
 import 'package:pilotta_protocol/pilotta_protocol.dart';
 import 'package:pilotta_server/app.dart';
@@ -36,7 +37,7 @@ void main() {
     addTearDown(() => server.close(force: true));
 
     await tester.pumpWidget(MaterialApp(
-      home: ChangeNotifierProvider.value(value: controller, child: const OnlineGameScreen()),
+      home: ChangeNotifierProvider<RoomClientController>.value(value: controller, child: const NetworkedGameScreen()),
     ));
     await tester.pump();
 

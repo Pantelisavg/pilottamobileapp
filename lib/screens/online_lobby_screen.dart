@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../controllers/online_game_controller.dart';
-import 'online_game_screen.dart';
+import '../controllers/room_client_controller.dart';
+import 'networked_game_screen.dart';
 
 /// Lets the player point at a running Pilotta server, then either create a
 /// new room or join one with a code a friend shared.
@@ -40,7 +41,7 @@ class _OnlineLobbyScreenState extends State<OnlineLobbyScreen> {
     final controller = OnlineGameController(serverUri: uri);
     controller.createRoom(playerName: _nameController.text.trim(), targetScore: _targetScore);
     Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => ChangeNotifierProvider.value(value: controller, child: const OnlineGameScreen()),
+      builder: (_) => ChangeNotifierProvider<RoomClientController>.value(value: controller, child: const NetworkedGameScreen()),
     ));
   }
 
@@ -52,7 +53,7 @@ class _OnlineLobbyScreenState extends State<OnlineLobbyScreen> {
     final controller = OnlineGameController(serverUri: uri);
     controller.joinRoom(roomCode: code, playerName: _nameController.text.trim());
     Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => ChangeNotifierProvider.value(value: controller, child: const OnlineGameScreen()),
+      builder: (_) => ChangeNotifierProvider<RoomClientController>.value(value: controller, child: const NetworkedGameScreen()),
     ));
   }
 

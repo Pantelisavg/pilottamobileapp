@@ -1,5 +1,9 @@
+import 'dart:io' show Platform;
+
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
+import 'bluetooth_lobby_screen.dart';
 import 'local_game_screen.dart';
 import 'online_lobby_screen.dart';
 
@@ -57,14 +61,19 @@ class _HomeScreenState extends State<HomeScreen> {
                     builder: (_) => const OnlineLobbyScreen(),
                   )),
                 ),
-                const SizedBox(height: 12),
-                _MenuButton(
-                  icon: Icons.bluetooth,
-                  label: 'Bluetooth / Τοπικό δίκτυο',
-                  subtitle: 'Σύντομα διαθέσιμο',
-                  enabled: false,
-                  onTap: () {},
-                ),
+                // Nearby Connections (the Bluetooth/local-network backend)
+                // is an Android-only plugin.
+                if (!kIsWeb && Platform.isAndroid) ...[
+                  const SizedBox(height: 12),
+                  _MenuButton(
+                    icon: Icons.bluetooth,
+                    label: 'Bluetooth / Τοπικό δίκτυο',
+                    subtitle: 'Παίξε χωρίς internet',
+                    onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => const BluetoothLobbyScreen(),
+                    )),
+                  ),
+                ],
               ],
             ),
           ),
@@ -109,7 +118,6 @@ class _MenuButton extends StatelessWidget {
   final IconData icon;
   final String label;
   final String subtitle;
-  final bool enabled;
   final VoidCallback onTap;
 
   const _MenuButton({
@@ -117,7 +125,6 @@ class _MenuButton extends StatelessWidget {
     required this.label,
     required this.subtitle,
     required this.onTap,
-    this.enabled = true,
   });
 
   @override
@@ -125,32 +132,28 @@ class _MenuButton extends StatelessWidget {
     return SizedBox(
       width: 300,
       child: Material(
-        color: enabled ? const Color(0xFF13543F) : const Color(0xFF0E3628),
+        color: const Color(0xFF13543F),
         borderRadius: BorderRadius.circular(14),
         child: InkWell(
           borderRadius: BorderRadius.circular(14),
-          onTap: enabled ? onTap : null,
+          onTap: onTap,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
             child: Row(
               children: [
-                Icon(icon, color: enabled ? Colors.amber : Colors.white24, size: 28),
+                Icon(icon, color: Colors.amber, size: 28),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(label,
-                          style: TextStyle(
-                            color: enabled ? Colors.white : Colors.white38,
+                          style: const TextStyle(
+                            color: Colors.white,
                             fontSize: 17,
                             fontWeight: FontWeight.w600,
                           )),
-                      Text(subtitle,
-                          style: TextStyle(
-                            color: enabled ? Colors.white60 : Colors.white24,
-                            fontSize: 12,
-                          )),
+                      Text(subtitle, style: const TextStyle(color: Colors.white60, fontSize: 12)),
                     ],
                   ),
                 ),
