@@ -77,7 +77,7 @@ class SimpleBot {
   /// Picks a legal card to play: prefers winning the trick cheaply, and
   /// otherwise discards the lowest-value card.
   PlayingCard decidePlay(Trick trick, List<PlayingCard> hand, Suit trumpSuit) {
-    final legal = trick.legalPlays(hand);
+    final legal = [...trick.legalPlays(hand)];
     if (legal.length == 1) return legal.first;
 
     legal.sort((a, b) => a.pointValue(trumpSuit).compareTo(b.pointValue(trumpSuit)));

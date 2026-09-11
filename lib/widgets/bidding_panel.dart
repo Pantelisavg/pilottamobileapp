@@ -1,0 +1,141 @@
+import 'package:flutter/material.dart';
+import 'package:pilotta_engine/pilotta_engine.dart';
+
+import 'playing_card_widget.dart';
+
+/// The human player's bidding controls: pick a value + suit, call capot,
+/// double/redouble, or pass.
+class BiddingPanel extends StatefulWidget {
+  final Auction auction;
+  final Seat seat;
+  final void Function(AuctionCall call) onCall;
+
+  const BiddingPanel({
+    super.key,
+    required this.auction,
+    required this.seat,
+    required this.onCall,
+  });
+
+  @override
+  State<BiddingPanel> createState() => _BiddingPanelState();
+}
+
+class _BiddingPanelState extends State<BiddingPanel> {
+  late int _value = _minimumValue();
+  Suit _suit = Suit.spades;
+
+  int _minimumValue() {
+    final bid = widget.auction.currentBid;
+    if (bid == null) return kMinBidValue;
+    return bid.value + kBidIncrement;
+  }
+
+  bool get _canDouble {
+    final bid = widget.auction.currentBid;
+    return bid != null && bid.seat.team != widget.seat.team;
+  }
+
+  bool get _canRedouble {
+    final bid = widget.auction.currentBid;
+    return bid != null && bid.seat.team == widget.seat.team;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final minValue = _minimumValue();
+    final value = _value < minValue ? minValue : _value;
+    final canBidValue = value <= 240;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+      decoration: const BoxDecoration(
+        color: Color(0xFF10241D),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text('Η δήλωσή σου',
+              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              IconButton(
+                onPressed: value > minValue ? () => setState(() => _value = value - kBidIncrement) : null,
+                icon: const Icon(Icons.remove_circle_outline),
+                color: Colors.white,
+              ),
+              SizedBox(
+                width: 88,
+                child: Text('$value',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.bold)),
+              ),
+              IconButton(
+                onPressed: canBidValue ? () => setState(() => _value = value + kBidIncrement) : null,
+                icon: const Icon(Icons.add_circle_outline),
+                color: Colors.white,
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 10,
+            children: [
+              for (final suit in Suit.values)
+                ChoiceChip(
+                  selected: _suit == suit,
+                  onSelected: (_) => setState(() => _suit = suit),
+                  backgroundColor: Colors.white10,
+                  selectedColor: Colors.amber,
+                  label: Text(
+                    suitSymbol(suit),
+                    style: TextStyle(
+                      fontSize: 22,
+                      color: _suit == suit ? suitColor(suit) : Colors.white,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 10,
+            runSpacing: 8,
+            alignment: WrapAlignment.center,
+            children: [
+              FilledButton(
+                onPressed:
+                    canBidValue ? () => widget.onCall(SuitBidCall(widget.seat, _suit, value)) : null,
+                child: Text('Δήλωση $value ${suitSymbol(_suit)}'),
+              ),
+              FilledButton.tonal(
+                onPressed: () => widget.onCall(CapotCall(widget.seat, _suit)),
+                child: Text('Καπότο ${suitSymbol(_suit)}'),
+              ),
+              if (_canDouble)
+                FilledButton.tonal(
+                  style: FilledButton.styleFrom(backgroundColor: Colors.orange.shade800),
+                  onPressed: () => widget.onCall(DoubleCall(widget.seat)),
+                  child: const Text('Κόντρα'),
+                ),
+              if (_canRedouble)
+                FilledButton.tonal(
+                  style: FilledButton.styleFrom(backgroundColor: Colors.red.shade900),
+                  onPressed: () => widget.onCall(RedoubleCall(widget.seat)),
+                  child: const Text('Ρεκόντρα'),
+                ),
+              OutlinedButton(
+                onPressed: () => widget.onCall(PassCall(widget.seat)),
+                style: OutlinedButton.styleFrom(foregroundColor: Colors.white),
+                child: const Text('Πάσο'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
