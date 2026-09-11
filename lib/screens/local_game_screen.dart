@@ -6,29 +6,7 @@ import 'package:provider/provider.dart';
 import '../controllers/local_game_controller.dart';
 import '../widgets/bidding_panel.dart';
 import '../widgets/playing_card_widget.dart';
-
-/// Screen positions are chosen so the engine's turn order
-/// (south -> west -> north -> east) reads anti-clockwise on screen:
-/// bottom -> right -> top -> left.
-const Map<Seat, Alignment> _seatAlignment = {
-  Seat.south: Alignment.bottomCenter,
-  Seat.west: Alignment.centerRight,
-  Seat.north: Alignment.topCenter,
-  Seat.east: Alignment.centerLeft,
-};
-
-String seatLabel(Seat seat) {
-  switch (seat) {
-    case Seat.south:
-      return 'Εσύ';
-    case Seat.west:
-      return 'Δεξιά';
-    case Seat.north:
-      return 'Συμπαίκτης';
-    case Seat.east:
-      return 'Αριστερά';
-  }
-}
+import '../widgets/seat_layout.dart';
 
 class LocalGameScreen extends StatelessWidget {
   final int targetScore;
@@ -154,7 +132,7 @@ class _TableArea extends StatelessWidget {
         for (final seat in Seat.values)
           if (seat != controller.humanSeat)
             Align(
-              alignment: _seatAlignment[seat]!,
+              alignment: seatAlignmentRelativeTo(seat, controller.humanSeat),
               child: _OpponentSeat(controller: controller, seat: seat),
             ),
         Center(child: _TrickArea(controller: controller)),
@@ -194,7 +172,7 @@ class _OpponentSeat extends StatelessWidget {
               border: isPartner ? Border.all(color: Colors.lightGreenAccent, width: 1.5) : null,
             ),
             child: Text(
-              '${seatLabel(seat)} · $cardCount',
+              '${seatLabelRelativeTo(seat, controller.humanSeat)} · $cardCount',
               style: const TextStyle(color: Colors.white, fontSize: 11),
             ),
           ),
@@ -237,7 +215,7 @@ class _TrickArea extends StatelessWidget {
           for (final seat in Seat.values)
             if (played[seat] != null)
               Align(
-                alignment: _seatAlignment[seat]!,
+                alignment: seatAlignmentRelativeTo(seat, controller.humanSeat),
                 child: PlayingCardWidget(card: played[seat], width: 52),
               ),
         ],
@@ -270,11 +248,11 @@ class _AuctionStatus extends StatelessWidget {
           Text(
             bid == null
                 ? 'Καμία δήλωση ακόμα'
-                : '${bid.isCapot ? 'Καπότο' : bid.value} ${suitSymbol(bid.suit)} — ${seatLabel(bid.seat)}',
+                : '${bid.isCapot ? 'Καπότο' : bid.value} ${suitSymbol(bid.suit)} — ${seatLabelRelativeTo(bid.seat, controller.humanSeat)}',
             style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 6),
-          Text('Σειρά: ${seatLabel(auction.seatToAct)}',
+          Text('Σειρά: ${seatLabelRelativeTo(auction.seatToAct, controller.humanSeat)}',
               style: const TextStyle(color: Colors.amberAccent, fontSize: 12)),
         ],
       ),
@@ -351,7 +329,7 @@ class _HandSummaryOverlay extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 '${contract.isCapot ? 'Καπότο' : contract.value} ${suitSymbol(contract.trumpSuit)}'
-                ' — ${seatLabel(contract.biddingSeat)}',
+                ' — ${seatLabelRelativeTo(contract.biddingSeat, controller.humanSeat)}',
                 style: const TextStyle(fontSize: 14),
               ),
               const Divider(height: 24),

@@ -336,7 +336,11 @@ class PilottaRoom {
       },
       dealer: phase == RoomPhase.lobby ? null : _dealer,
       auctionCalls: auction?.calls.map(auctionCallToJson).toList(),
-      seatToAct: phase == RoomPhase.bidding ? auction?.seatToAct : null,
+      seatToAct: switch (phase) {
+        RoomPhase.bidding => auction?.seatToAct,
+        RoomPhase.playing => h?.currentTrick.seatToPlay,
+        _ => null,
+      },
       contract: h != null ? contractToJson(h.contract) : null,
       yourHand: handOf(viewer),
       handSizes: handSizes,

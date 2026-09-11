@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'local_game_screen.dart';
+import 'online_lobby_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -51,9 +52,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 _MenuButton(
                   icon: Icons.public,
                   label: 'Online Παιχνίδι',
-                  subtitle: 'Σύντομα διαθέσιμο',
-                  enabled: false,
-                  onTap: () {},
+                  subtitle: 'Παίξε με φίλους μέσω server',
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => const OnlineLobbyScreen(),
+                  )),
                 ),
                 const SizedBox(height: 12),
                 _MenuButton(
