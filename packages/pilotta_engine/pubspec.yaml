@@ -1,0 +1,14 @@
+name: pilotta_engine
+description: Pure-Dart rules engine for Pilotta (Παλαριστή) — cards, bidding, trick-taking, declarations and scoring. No Flutter dependency, so it can run on any platform (mobile, web, server).
+version: 0.1.0
+publish_to: "none"
+
+environment:
+  sdk: ^3.5.0
+
+dependencies:
+  meta: ^1.15.0
+
+dev_dependencies:
+  test: ^1.25.0
+  lints: ^4.0.0
