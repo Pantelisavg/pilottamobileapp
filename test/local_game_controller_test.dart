@@ -4,6 +4,7 @@ import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pilotta/controllers/local_game_controller.dart';
 import 'package:pilotta_engine/pilotta_engine.dart';
+import 'package:pilotta_protocol/pilotta_protocol.dart';
 
 void main() {
   test('a full match can be played to completion with the human always passing '
@@ -15,19 +16,19 @@ void main() {
       );
 
       var guard = 0;
-      while (controller.phase != GamePhase.matchOver && guard++ < 5000) {
+      while (controller.phase != RoomPhase.matchOver && guard++ < 5000) {
         if (controller.isHumanTurnToBid) {
           controller.submitBid(PassCall(controller.humanSeat));
         } else if (controller.isHumanTurnToPlay) {
           controller.playCard(controller.humanLegalPlays.first);
-        } else if (controller.phase == GamePhase.handSummary) {
+        } else if (controller.phase == RoomPhase.handSummary) {
           controller.continueAfterHand();
         } else {
           async.elapse(const Duration(milliseconds: 100));
         }
       }
 
-      expect(controller.phase, GamePhase.matchOver);
+      expect(controller.phase, RoomPhase.matchOver);
       expect(controller.scoreboard.winner, isNotNull);
       expect(controller.scoreboard.history, isNotEmpty);
 
@@ -47,12 +48,12 @@ void main() {
       final controller = LocalGameController(targetScore: 101, random: Random(3));
 
       var guard = 0;
-      while (controller.phase != GamePhase.matchOver && guard++ < 5000) {
+      while (controller.phase != RoomPhase.matchOver && guard++ < 5000) {
         if (controller.isHumanTurnToBid) {
           controller.submitBid(PassCall(controller.humanSeat));
         } else if (controller.isHumanTurnToPlay) {
           controller.playCard(controller.humanLegalPlays.first);
-        } else if (controller.phase == GamePhase.handSummary) {
+        } else if (controller.phase == RoomPhase.handSummary) {
           controller.continueAfterHand();
         } else {
           async.elapse(const Duration(milliseconds: 100));

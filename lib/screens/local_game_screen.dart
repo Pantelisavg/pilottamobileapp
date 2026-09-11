@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pilotta_engine/pilotta_engine.dart';
+import 'package:pilotta_protocol/pilotta_protocol.dart';
 import 'package:provider/provider.dart';
 
 import '../controllers/local_game_controller.dart';
@@ -84,9 +85,9 @@ class _GameView extends StatelessWidget {
                   onCall: controller.submitBid,
                 ),
               ),
-            if (controller.phase == GamePhase.handSummary)
+            if (controller.phase == RoomPhase.handSummary)
               _HandSummaryOverlay(controller: controller),
-            if (controller.phase == GamePhase.matchOver)
+            if (controller.phase == RoomPhase.matchOver)
               _MatchOverOverlay(controller: controller),
           ],
         ),
@@ -157,7 +158,7 @@ class _TableArea extends StatelessWidget {
               child: _OpponentSeat(controller: controller, seat: seat),
             ),
         Center(child: _TrickArea(controller: controller)),
-        if (controller.phase == GamePhase.bidding)
+        if (controller.phase == RoomPhase.bidding)
           Align(
             alignment: Alignment.center,
             child: _AuctionStatus(controller: controller),
@@ -174,7 +175,7 @@ class _OpponentSeat extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isActive = controller.phase == GamePhase.bidding
+    final isActive = controller.phase == RoomPhase.bidding
         ? controller.auction?.seatToAct == seat
         : controller.hand?.currentTrick.seatToPlay == seat;
     final cardCount = controller.handOf(seat).length;

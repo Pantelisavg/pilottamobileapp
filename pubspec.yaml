@@ -38,7 +38,11 @@ dependencies:
   pilotta_engine:
     path: packages/pilotta_engine
 
+  pilotta_protocol:
+    path: packages/pilotta_protocol
+
   provider: ^6.1.2
+  web_socket_channel: ^3.0.1
 
 dev_dependencies:
   flutter_test:

@@ -1,0 +1,23 @@
+name: pilotta_server
+description: >
+  Online multiplayer server for Pilotta: a WebSocket-based room server built
+  on the shared pilotta_protocol package (the same PilottaRoom game host used
+  by the Bluetooth/local-network transport in the app).
+version: 0.1.0
+publish_to: "none"
+
+environment:
+  sdk: ^3.5.0
+
+dependencies:
+  pilotta_engine:
+    path: ../packages/pilotta_engine
+  pilotta_protocol:
+    path: ../packages/pilotta_protocol
+  shelf: ^1.4.1
+  shelf_web_socket: ^2.0.1
+  web_socket_channel: ^3.0.1
+
+dev_dependencies:
+  test: ^1.25.0
+  lints: ^4.0.0
