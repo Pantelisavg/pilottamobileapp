@@ -6,7 +6,11 @@ plugins {
 
 android {
     namespace = "com.pilotta.pilotta"
-    compileSdk = flutter.compileSdkVersion
+    // permission_handler_android (used for Bluetooth/location runtime
+    // permissions) requires compiling against SDK 37 or higher; pin this
+    // explicitly rather than trusting flutter.compileSdkVersion, which
+    // varies by installed Flutter version and was resolving to 36.
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
