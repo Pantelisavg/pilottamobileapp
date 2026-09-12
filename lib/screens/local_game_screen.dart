@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../controllers/local_game_controller.dart';
 import '../widgets/bidding_panel.dart';
+import '../widgets/declaration_label.dart';
 import '../widgets/playing_card_widget.dart';
 import '../widgets/seat_layout.dart';
 import '../widgets/suit_icon.dart';
@@ -52,6 +53,8 @@ class _GameView extends StatelessWidget {
                         style: const TextStyle(color: Colors.white, fontSize: 12)),
                   ),
                 Expanded(child: _TableArea(controller: controller)),
+                if (controller.canAnnounceDeclaration || controller.canRevealDeclaration)
+                  _DeclarationPanel(controller: controller),
                 // The hand stays visible above the bidding panel — you
                 // need to see your cards while you decide what to call.
                 _HumanHand(controller: controller),
@@ -158,6 +161,7 @@ class _OpponentSeat extends StatelessWidget {
         : controller.hand?.currentTrick.seatToPlay == seat;
     final cardCount = controller.handOf(seat).length;
     final isPartner = seat == controller.humanSeat.partner;
+    final declState = controller.hand?.declarationStateOf(seat);
 
     return Padding(
       padding: const EdgeInsets.all(8),
@@ -176,6 +180,18 @@ class _OpponentSeat extends StatelessWidget {
               style: const TextStyle(color: Colors.white, fontSize: 11),
             ),
           ),
+          if (declState == DeclarationAnnounceState.announced)
+            const Padding(
+              padding: EdgeInsets.only(top: 2),
+              child: Text('Δήλωσε — αναμένεται αποκάλυψη',
+                  style: TextStyle(color: Colors.amberAccent, fontSize: 9)),
+            )
+          else if (declState == DeclarationAnnounceState.revealed)
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(declarationLabel(controller.hand!.bestDeclarationOf(seat)!),
+                  style: const TextStyle(color: Colors.lightGreenAccent, fontSize: 9)),
+            ),
           const SizedBox(height: 4),
           SizedBox(
             height: 34,
@@ -262,6 +278,41 @@ class _AuctionStatus extends StatelessWidget {
           const SizedBox(height: 6),
           Text('Σειρά: ${seatLabelRelativeTo(auction.seatToAct, controller.humanSeat)}',
               style: const TextStyle(color: Colors.amberAccent, fontSize: 12)),
+        ],
+      ),
+    );
+  }
+}
+
+class _DeclarationPanel extends StatelessWidget {
+  final LocalGameController controller;
+  const _DeclarationPanel({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    final declaration = controller.myBestDeclaration;
+    if (declaration == null) return const SizedBox.shrink();
+
+    final canAnnounce = controller.canAnnounceDeclaration;
+    return Container(
+      width: double.infinity,
+      color: Colors.indigo.shade900,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              canAnnounce
+                  ? 'Έχεις ${declarationLabel(declaration)} (${declaration.pointValue()} π.) — δήλωσέ το τώρα!'
+                  : 'Αποκάλυψε τη δήλωσή σου πριν παίξεις, αλλιώς χάνεται!',
+              style: const TextStyle(color: Colors.white, fontSize: 12),
+            ),
+          ),
+          const SizedBox(width: 8),
+          FilledButton(
+            onPressed: canAnnounce ? controller.announceDeclaration : controller.revealDeclaration,
+            child: Text(canAnnounce ? 'Δήλωσε' : 'Αποκάλυψε'),
+          ),
         ],
       ),
     );
@@ -358,6 +409,15 @@ class _HandSummaryOverlay extends StatelessWidget {
               if (result.declarations.beloteSeat != null)
                 _row('Μπελότ-Ρεμπελότ',
                     result.declarations.beloteSeat!.team == ourTeam ? '20 – 0' : '0 – 20'),
+              for (final entry in result.declarations.forfeitedPerSeat.entries)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Text(
+                    '${seatLabelRelativeTo(entry.key, controller.humanSeat)} ξέχασε να αποκαλύψει: '
+                    '${declarationLabel(entry.value)} (χαμένο)',
+                    style: const TextStyle(fontSize: 11, color: Colors.redAccent),
+                  ),
+                ),
               _row('Σύνολο',
                   '${result.rawTotals[ourTeam]} – ${result.rawTotals[ourTeam.opponent]}'),
               const Divider(height: 24),

@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../controllers/room_client_controller.dart';
 import '../widgets/bidding_panel.dart';
+import '../widgets/declaration_label.dart';
 import '../widgets/playing_card_widget.dart';
 import '../widgets/seat_layout.dart';
 import '../widgets/suit_icon.dart';
@@ -184,6 +185,8 @@ class _OnlineTable extends StatelessWidget {
                         style: const TextStyle(color: Colors.white, fontSize: 12)),
                   ),
                 Expanded(child: _OnlineTableArea(controller: controller)),
+                if (snapshot.canAnnounceDeclaration || snapshot.canRevealDeclaration)
+                  _OnlineDeclarationPanel(controller: controller),
                 // The hand stays visible above the bidding panel — you
                 // need to see your cards while you decide what to call.
                 _OnlineHumanHand(controller: controller),
@@ -286,6 +289,7 @@ class _OnlineOpponentSeat extends StatelessWidget {
     final cardCount = snapshot.handSizes[seat] ?? 0;
     final isPartner = seat == controller.mySeat!.partner;
     final info = snapshot.seats[seat]!;
+    final declState = snapshot.declarationStates[seat];
 
     return Padding(
       padding: const EdgeInsets.all(8),
@@ -306,6 +310,18 @@ class _OnlineOpponentSeat extends StatelessWidget {
               style: const TextStyle(color: Colors.white, fontSize: 11),
             ),
           ),
+          if (declState == DeclarationAnnounceState.announced.name)
+            const Padding(
+              padding: EdgeInsets.only(top: 2),
+              child: Text('Δήλωσε — αναμένεται αποκάλυψη',
+                  style: TextStyle(color: Colors.amberAccent, fontSize: 9)),
+            )
+          else if (declState == DeclarationAnnounceState.revealed.name)
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(declarationLabelFromJson(snapshot.revealedDeclarations[seat]!),
+                  style: const TextStyle(color: Colors.lightGreenAccent, fontSize: 9)),
+            ),
           const SizedBox(height: 4),
           SizedBox(
             height: 34,
@@ -397,6 +413,42 @@ class _OnlineAuctionStatus extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _OnlineDeclarationPanel extends StatelessWidget {
+  final RoomClientController controller;
+  const _OnlineDeclarationPanel({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    final snapshot = controller.snapshot!;
+    final declaration = snapshot.yourBestDeclaration;
+    if (declaration == null) return const SizedBox.shrink();
+
+    final canAnnounce = snapshot.canAnnounceDeclaration;
+    return Container(
+      width: double.infinity,
+      color: Colors.indigo.shade900,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              canAnnounce
+                  ? 'Έχεις ${declarationLabelFromJson(declaration)} (${declaration['pointValue']} π.) — δήλωσέ το τώρα!'
+                  : 'Αποκάλυψε τη δήλωσή σου πριν παίξεις, αλλιώς χάνεται!',
+              style: const TextStyle(color: Colors.white, fontSize: 12),
+            ),
+          ),
+          const SizedBox(width: 8),
+          FilledButton(
+            onPressed: canAnnounce ? controller.announceDeclaration : controller.revealDeclaration,
+            child: Text(canAnnounce ? 'Δήλωσε' : 'Αποκάλυψε'),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -503,6 +555,17 @@ class _OnlineHandSummaryOverlay extends StatelessWidget {
                   declarations['winningTeam'] == myTeamKey
                       ? '${declarations['winningTeamPoints']} – 0'
                       : '0 – ${declarations['winningTeamPoints']}',
+                ),
+              for (final entry
+                  in (declarations['forfeitedPerSeat'] as Map<String, dynamic>).entries)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Text(
+                    '${seatLabelRelativeTo(Seat.values.byName(entry.key), controller.mySeat!)} '
+                    'ξέχασε να αποκαλύψει: '
+                    '${declarationLabelFromJson(entry.value as Map<String, dynamic>)} (χαμένο)',
+                    style: const TextStyle(fontSize: 11, color: Colors.redAccent),
+                  ),
                 ),
               _row('Σύνολο', '${rawTotals[myTeamKey]} – ${rawTotals[theirTeamKey]}'),
               const Divider(height: 24),
