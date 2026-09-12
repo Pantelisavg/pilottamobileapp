@@ -7,7 +7,21 @@ import 'package:test/test.dart';
 /// available card for whichever seat's turn it is. Good enough for
 /// integration tests that only care about invariants (point totals sum
 /// correctly) or about a scenario engineered to force a specific outcome.
-void autoPlayToCompletion(PilottaHand hand) {
+///
+/// Also announces and immediately reveals every seat's declaration up
+/// front (mirroring how [SimpleBot] always announces) so tests written
+/// before the announce/reveal timing mechanic existed keep exercising the
+/// same "declarations always count" scenarios unless they opt out by
+/// managing announce/reveal themselves.
+void autoPlayToCompletion(PilottaHand hand, {bool autoDeclare = true}) {
+  if (autoDeclare) {
+    for (final seat in Seat.values) {
+      if (hand.canAnnounceDeclaration(seat)) {
+        hand.announceDeclaration(seat);
+        hand.revealDeclaration(seat);
+      }
+    }
+  }
   while (!hand.isHandComplete) {
     final seat = hand.currentTrick.seatToPlay;
     final card = hand.legalPlays(seat).first;
@@ -32,7 +46,7 @@ void main() {
           firstLeader: Seat.south,
         );
         autoPlayToCompletion(hand);
-        final result = hand.finish(hands);
+        final result = hand.finish();
 
         final ns = result.trickPoints[Team.northSouth]!;
         final ew = result.trickPoints[Team.eastWest]!;
@@ -81,7 +95,7 @@ void main() {
         firstLeader: Seat.south,
       );
       autoPlayToCompletion(hand);
-      final result = hand.finish(hands);
+      final result = hand.finish();
 
       expect(result.allTricksTeam, Team.northSouth);
       expect(result.trickPoints[Team.northSouth], 250);
@@ -108,7 +122,7 @@ void main() {
         firstLeader: Seat.south,
       );
       autoPlayToCompletion(hand);
-      final result = hand.finish(hands);
+      final result = hand.finish();
 
       expect(result.contractMade, isTrue);
       expect(result.rawTotals[Team.northSouth],
@@ -132,7 +146,7 @@ void main() {
         firstLeader: Seat.south,
       );
       autoPlayToCompletion(hand);
-      final result = hand.finish(hands);
+      final result = hand.finish();
 
       expect(result.contractMade, isFalse);
       expect(result.rawTotals[Team.eastWest], 0);
@@ -199,7 +213,7 @@ void main() {
       );
       final hand = PilottaHand(contract: contract, initialHands: hands, firstLeader: Seat.south);
       autoPlayToCompletion(hand);
-      final result = hand.finish(hands);
+      final result = hand.finish();
 
       expect(result.declarations.winningTeam, Team.northSouth);
       expect(result.declarations.winningTeamPoints, 50);
@@ -258,9 +272,217 @@ void main() {
       );
       final hand = PilottaHand(contract: contract, initialHands: hands, firstLeader: Seat.south);
       autoPlayToCompletion(hand);
-      final result = hand.finish(hands);
+      final result = hand.finish();
 
       expect(result.declarations.beloteSeat, Seat.south);
+    });
+
+    test('belote is exempt from the announce/reveal timing — it counts even '
+        'with no announce/reveal calls made at all', () {
+      final hands = {
+        Seat.south: [
+          const PlayingCard(Suit.spades, Rank.king),
+          const PlayingCard(Suit.spades, Rank.queen),
+          const PlayingCard(Suit.spades, Rank.seven),
+          const PlayingCard(Suit.spades, Rank.eight),
+          const PlayingCard(Suit.hearts, Rank.seven),
+          const PlayingCard(Suit.hearts, Rank.eight),
+          const PlayingCard(Suit.diamonds, Rank.seven),
+          const PlayingCard(Suit.diamonds, Rank.eight),
+        ],
+        Seat.west: [
+          const PlayingCard(Suit.spades, Rank.nine),
+          const PlayingCard(Suit.spades, Rank.ten),
+          const PlayingCard(Suit.hearts, Rank.nine),
+          const PlayingCard(Suit.hearts, Rank.ten),
+          const PlayingCard(Suit.clubs, Rank.seven),
+          const PlayingCard(Suit.clubs, Rank.eight),
+          const PlayingCard(Suit.clubs, Rank.nine),
+          const PlayingCard(Suit.clubs, Rank.ten),
+        ],
+        Seat.north: [
+          const PlayingCard(Suit.spades, Rank.jack),
+          const PlayingCard(Suit.spades, Rank.ace),
+          const PlayingCard(Suit.hearts, Rank.jack),
+          const PlayingCard(Suit.hearts, Rank.queen),
+          const PlayingCard(Suit.diamonds, Rank.jack),
+          const PlayingCard(Suit.diamonds, Rank.queen),
+          const PlayingCard(Suit.clubs, Rank.jack),
+          const PlayingCard(Suit.clubs, Rank.queen),
+        ],
+        Seat.east: [
+          const PlayingCard(Suit.hearts, Rank.ace),
+          const PlayingCard(Suit.hearts, Rank.king),
+          const PlayingCard(Suit.diamonds, Rank.ace),
+          const PlayingCard(Suit.diamonds, Rank.king),
+          const PlayingCard(Suit.clubs, Rank.ace),
+          const PlayingCard(Suit.clubs, Rank.king),
+          const PlayingCard(Suit.diamonds, Rank.nine),
+          const PlayingCard(Suit.diamonds, Rank.ten),
+        ],
+      };
+
+      final contract = Contract(
+        biddingSeat: Seat.south,
+        trumpSuit: Suit.spades,
+        value: 80,
+        isCapot: false,
+      );
+      final hand = PilottaHand(contract: contract, initialHands: hands, firstLeader: Seat.south);
+      // Nobody announces or reveals anything at all.
+      autoPlayToCompletion(hand, autoDeclare: false);
+      final result = hand.finish();
+
+      expect(result.declarations.beloteSeat, Seat.south);
+    });
+  });
+
+  group('Declaration announce/reveal timing', () {
+    // South holds hearts A-K-Q-J (a 4-card sequence, 50 pts); nobody else
+    // at the table has a competing declaration in these hands, so whether
+    // it counts depends purely on whether south announces/reveals in time.
+    Map<Seat, List<PlayingCard>> declarableHands() => {
+          Seat.south: [
+            const PlayingCard(Suit.hearts, Rank.ace),
+            const PlayingCard(Suit.hearts, Rank.king),
+            const PlayingCard(Suit.hearts, Rank.queen),
+            const PlayingCard(Suit.hearts, Rank.jack),
+            const PlayingCard(Suit.clubs, Rank.jack),
+            const PlayingCard(Suit.diamonds, Rank.eight),
+            const PlayingCard(Suit.spades, Rank.seven),
+            const PlayingCard(Suit.spades, Rank.nine),
+          ],
+          Seat.west: [
+            const PlayingCard(Suit.clubs, Rank.ten),
+            const PlayingCard(Suit.clubs, Rank.eight),
+            const PlayingCard(Suit.diamonds, Rank.ace),
+            const PlayingCard(Suit.diamonds, Rank.seven),
+            const PlayingCard(Suit.hearts, Rank.nine),
+            const PlayingCard(Suit.spades, Rank.eight),
+            const PlayingCard(Suit.spades, Rank.ten),
+            const PlayingCard(Suit.spades, Rank.queen),
+          ],
+          Seat.north: [
+            const PlayingCard(Suit.clubs, Rank.nine),
+            const PlayingCard(Suit.clubs, Rank.seven),
+            const PlayingCard(Suit.diamonds, Rank.king),
+            const PlayingCard(Suit.diamonds, Rank.jack),
+            const PlayingCard(Suit.hearts, Rank.ten),
+            const PlayingCard(Suit.hearts, Rank.eight),
+            const PlayingCard(Suit.spades, Rank.jack),
+            const PlayingCard(Suit.spades, Rank.king),
+          ],
+          Seat.east: [
+            const PlayingCard(Suit.clubs, Rank.ace),
+            const PlayingCard(Suit.clubs, Rank.king),
+            const PlayingCard(Suit.clubs, Rank.queen),
+            const PlayingCard(Suit.diamonds, Rank.queen),
+            const PlayingCard(Suit.diamonds, Rank.ten),
+            const PlayingCard(Suit.diamonds, Rank.nine),
+            const PlayingCard(Suit.hearts, Rank.seven),
+            const PlayingCard(Suit.spades, Rank.ace),
+          ],
+        };
+
+    PilottaHand makeHand() => PilottaHand(
+          contract: Contract(
+            biddingSeat: Seat.south,
+            trumpSuit: Suit.spades,
+            value: 80,
+            isCapot: false,
+          ),
+          initialHands: declarableHands(),
+          firstLeader: Seat.south,
+        );
+
+    /// Plays exactly one more trick (4 cards) with the first legal card for
+    /// whoever's turn it is, with no announcing/revealing.
+    void playOneTrick(PilottaHand hand) {
+      final startCount = hand.completedTricks.length;
+      while (hand.completedTricks.length == startCount) {
+        final seat = hand.currentTrick.seatToPlay;
+        hand.playCard(seat, hand.legalPlays(seat).first);
+      }
+    }
+
+    test('can only be announced during trick 1, and only once', () {
+      final hand = makeHand();
+      expect(hand.canAnnounceDeclaration(Seat.south), isTrue);
+
+      hand.announceDeclaration(Seat.south);
+      expect(hand.declarationStateOf(Seat.south), DeclarationAnnounceState.announced);
+      // Already announced — can't announce again.
+      expect(hand.canAnnounceDeclaration(Seat.south), isFalse);
+      expect(() => hand.announceDeclaration(Seat.south), throwsStateError);
+
+      playOneTrick(hand); // trick 1 over
+      final freshHand = makeHand();
+      playOneTrick(freshHand); // trick 1 over, nobody announced
+      expect(freshHand.canAnnounceDeclaration(Seat.south), isFalse);
+      expect(() => freshHand.announceDeclaration(Seat.south), throwsStateError);
+    });
+
+    test('revealing before playing your trick-2 card makes it count', () {
+      final hand = makeHand();
+      hand.announceDeclaration(Seat.south);
+      playOneTrick(hand); // now in trick 2
+
+      while (hand.currentTrick.seatToPlay != Seat.south) {
+        final seat = hand.currentTrick.seatToPlay;
+        hand.playCard(seat, hand.legalPlays(seat).first);
+      }
+      expect(hand.canRevealDeclaration(Seat.south), isTrue);
+      hand.revealDeclaration(Seat.south);
+      hand.playCard(Seat.south, hand.legalPlays(Seat.south).first);
+
+      while (!hand.isHandComplete) {
+        final seat = hand.currentTrick.seatToPlay;
+        hand.playCard(seat, hand.legalPlays(seat).first);
+      }
+
+      expect(hand.declarationStateOf(Seat.south), DeclarationAnnounceState.revealed);
+      final result = hand.finish();
+      expect(result.declarations.bestPerSeat[Seat.south]?.pointValue(), 50);
+      expect(result.declarations.winningTeam, Team.northSouth);
+      expect(result.declarations.winningTeamPoints, 50);
+      expect(result.declarations.forfeitedPerSeat, isEmpty);
+    });
+
+    test('forgetting to reveal before your trick-2 card forfeits it — it '
+        'does not count towards scoring', () {
+      final hand = makeHand();
+      hand.announceDeclaration(Seat.south);
+      playOneTrick(hand); // now in trick 2
+
+      while (hand.currentTrick.seatToPlay != Seat.south) {
+        final seat = hand.currentTrick.seatToPlay;
+        hand.playCard(seat, hand.legalPlays(seat).first);
+      }
+      // South plays their trick-2 card WITHOUT revealing first.
+      expect(hand.declarationStateOf(Seat.south), DeclarationAnnounceState.announced);
+      hand.playCard(Seat.south, hand.legalPlays(Seat.south).first);
+      expect(hand.declarationStateOf(Seat.south), DeclarationAnnounceState.forfeited);
+      expect(hand.canRevealDeclaration(Seat.south), isFalse);
+
+      while (!hand.isHandComplete) {
+        final seat = hand.currentTrick.seatToPlay;
+        hand.playCard(seat, hand.legalPlays(seat).first);
+      }
+
+      final result = hand.finish();
+      expect(result.declarations.bestPerSeat[Seat.south], isNull);
+      expect(result.declarations.winningTeam, isNull);
+      expect(result.declarations.forfeitedPerSeat[Seat.south]?.pointValue(), 50);
+    });
+
+    test('never announcing at all means it never counts, silently', () {
+      final hand = makeHand();
+      autoPlayToCompletion(hand, autoDeclare: false);
+      final result = hand.finish();
+
+      expect(result.declarations.bestPerSeat[Seat.south], isNull);
+      expect(result.declarations.winningTeam, isNull);
+      expect(result.declarations.forfeitedPerSeat, isEmpty);
     });
   });
 }

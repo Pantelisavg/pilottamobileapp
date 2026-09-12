@@ -32,11 +32,16 @@ class BluetoothHostSession extends RoomClientController {
 
   bool advertising = false;
 
-  BluetoothHostSession({required int targetScore, required this.hostName, Random? random})
-      : room = PilottaRoom(
+  BluetoothHostSession({
+    required int targetScore,
+    required this.hostName,
+    Random? random,
+    bool mustOvertrumpAllSuits = false,
+  }) : room = PilottaRoom(
           roomCode: _generateCode(random ?? Random()),
           targetScore: targetScore,
           random: random,
+          mustOvertrumpAllSuits: mustOvertrumpAllSuits,
         ) {
     final seat = room.join(hostName)!;
     handleServerMessage(WelcomeMessage(roomCode: room.roomCode, yourSeat: seat));
@@ -108,6 +113,18 @@ class BluetoothHostSession extends RoomClientController {
         if (error != null) {
           _transport.sendMessage(endpointId, jsonEncode(ServerErrorMessage(error).toJson()));
         }
+      case AnnounceDeclarationMessage():
+        final seat = _endpointSeat[endpointId];
+        final error = seat == null ? 'Άγνωστη θέση.' : room.handleAnnounceDeclaration(seat);
+        if (error != null) {
+          _transport.sendMessage(endpointId, jsonEncode(ServerErrorMessage(error).toJson()));
+        }
+      case RevealDeclarationMessage():
+        final seat = _endpointSeat[endpointId];
+        final error = seat == null ? 'Άγνωστη θέση.' : room.handleRevealDeclaration(seat);
+        if (error != null) {
+          _transport.sendMessage(endpointId, jsonEncode(ServerErrorMessage(error).toJson()));
+        }
       case ReadyForNextHandMessage():
         final seat = _endpointSeat[endpointId];
         if (seat != null) room.markReadyForNextHand(seat);
@@ -135,6 +152,10 @@ class BluetoothHostSession extends RoomClientController {
         room.handleBid(mySeat!, message.call);
       case PlayCardMessage():
         room.handlePlayCard(mySeat!, message.card);
+      case AnnounceDeclarationMessage():
+        room.handleAnnounceDeclaration(mySeat!);
+      case RevealDeclarationMessage():
+        room.handleRevealDeclaration(mySeat!);
       case ReadyForNextHandMessage():
         room.markReadyForNextHand(mySeat!);
       case LeaveMessage():

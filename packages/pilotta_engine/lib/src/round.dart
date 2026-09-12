@@ -7,16 +7,46 @@ import 'trick.dart';
 
 const int kBelotePoints = 20;
 
+/// Tracks whether a player has announced and/or revealed a non-Pilotta
+/// declaration in time. Belote/Pilotta (King+Queen of trump) is exempt from
+/// this timing entirely — it's declared live as those two cards are played,
+/// always counts, and is never tracked through this state machine.
+enum DeclarationAnnounceState {
+  /// Not yet announced (or nothing to announce).
+  none,
+
+  /// Announced during trick 1, not yet revealed.
+  announced,
+
+  /// Revealed before playing a card in trick 2 — counts towards scoring.
+  revealed,
+
+  /// Announced but never revealed before playing a card in trick 2 —
+  /// forfeited, and does not count towards scoring.
+  forfeited,
+}
+
 /// Everything about how declarations and belote were resolved for a hand,
 /// exposed mainly so a UI can explain the score breakdown.
 class DeclarationOutcome {
+  /// Each seat's best declaration, but only for seats who successfully
+  /// announced *and* revealed it in time — null for every other seat
+  /// (including seats who never had a declaration, never announced one, or
+  /// forfeited one by not revealing in time).
   final Map<Seat, Declaration?> bestPerSeat;
+
+  /// Declarations that were announced but never revealed in time — kept
+  /// purely for UI/explanatory purposes (e.g. "North forgot to reveal a
+  /// sequence"); these never counted towards scoring.
+  final Map<Seat, Declaration> forfeitedPerSeat;
+
   final Team? winningTeam;
   final int winningTeamPoints;
   final Seat? beloteSeat;
 
   const DeclarationOutcome({
     required this.bestPerSeat,
+    required this.forfeitedPerSeat,
     required this.winningTeam,
     required this.winningTeamPoints,
     required this.beloteSeat,
@@ -49,9 +79,19 @@ class HandResult {
 /// are gone, at which point [finish] computes the score.
 class PilottaHand {
   final Contract contract;
+  final Map<Seat, List<PlayingCard>> _originalHands;
   final Map<Seat, List<PlayingCard>> _hands;
   final Map<Team, int> _trickPointsWon = {Team.northSouth: 0, Team.eastWest: 0};
   final Map<Team, int> _tricksWon = {Team.northSouth: 0, Team.eastWest: 0};
+
+  /// House-rule variant threaded down to every [Trick] this hand plays —
+  /// see [Trick.mustOvertrumpAllSuits].
+  final bool mustOvertrumpAllSuits;
+
+  final Map<Seat, DeclarationAnnounceState> _declarationState = {
+    for (final seat in Seat.values) seat: DeclarationAnnounceState.none,
+  };
+
   Team? _lastTrickTeam;
   Trick? _currentTrick;
   Seat _nextLeader;
@@ -61,18 +101,39 @@ class PilottaHand {
     required this.contract,
     required Map<Seat, List<PlayingCard>> initialHands,
     required Seat firstLeader,
-  })  : _hands = {for (final e in initialHands.entries) e.key: List.of(e.value)},
+    this.mustOvertrumpAllSuits = false,
+  })  : _originalHands = {
+          for (final e in initialHands.entries) e.key: List.unmodifiable(List.of(e.value)),
+        },
+        _hands = {for (final e in initialHands.entries) e.key: List.of(e.value)},
         _nextLeader = firstLeader {
     for (final hand in _hands.values) {
       if (hand.length != 8) {
         throw ArgumentError('Each hand must have exactly 8 cards.');
       }
     }
-    _currentTrick = Trick(leader: _nextLeader, trumpSuit: contract.trumpSuit);
+    _currentTrick = Trick(
+      leader: _nextLeader,
+      trumpSuit: contract.trumpSuit,
+      mustOvertrumpAllSuits: mustOvertrumpAllSuits,
+    );
   }
 
   /// Cards a seat still holds.
   List<PlayingCard> handOf(Seat seat) => List.unmodifiable(_hands[seat]!);
+
+  /// The 8 cards [seat] was originally dealt, unaffected by play since —
+  /// used to evaluate declarations at any point during the hand.
+  List<PlayingCard> originalHandOf(Seat seat) => _originalHands[seat]!;
+
+  /// The best declaration [seat] could announce, based on their original
+  /// hand — independent of whether they've actually announced/revealed it.
+  Declaration? bestDeclarationOf(Seat seat) =>
+      bestDeclaration(seat, _originalHands[seat]!, contract.trumpSuit);
+
+  /// Where [seat] currently stands in the announce/reveal flow for their
+  /// (non-Pilotta) declaration, if any.
+  DeclarationAnnounceState declarationStateOf(Seat seat) => _declarationState[seat]!;
 
   Trick get currentTrick => _currentTrick!;
 
@@ -83,9 +144,48 @@ class PilottaHand {
     return currentTrick.legalPlays(_hands[seat]!);
   }
 
+  /// Whether [seat] may announce a (non-Pilotta) declaration right now:
+  /// only during trick 1, only once, and only if they actually hold one.
+  bool canAnnounceDeclaration(Seat seat) {
+    if (completedTricks.isNotEmpty) return false;
+    if (_declarationState[seat] != DeclarationAnnounceState.none) return false;
+    return bestDeclarationOf(seat) != null;
+  }
+
+  /// Announces [seat]'s best declaration. It must still be revealed before
+  /// [seat] plays a card in trick 2, or [playCard] will forfeit it
+  /// automatically.
+  void announceDeclaration(Seat seat) {
+    if (!canAnnounceDeclaration(seat)) {
+      throw StateError('$seat cannot announce a declaration right now.');
+    }
+    _declarationState[seat] = DeclarationAnnounceState.announced;
+  }
+
+  /// Whether [seat] may reveal a previously-announced declaration right
+  /// now — any time after announcing, up until they play their card in
+  /// trick 2 (after which [playCard] auto-forfeits it).
+  bool canRevealDeclaration(Seat seat) {
+    return _declarationState[seat] == DeclarationAnnounceState.announced &&
+        completedTricks.length <= 1;
+  }
+
+  /// Reveals [seat]'s previously-announced declaration, making it eligible
+  /// to count towards scoring (subject to the cross-team comparison).
+  void revealDeclaration(Seat seat) {
+    if (!canRevealDeclaration(seat)) {
+      throw StateError('$seat cannot reveal a declaration right now.');
+    }
+    _declarationState[seat] = DeclarationAnnounceState.revealed;
+  }
+
   /// Plays [card] for [seat]. Throws if it's not their turn or the card is
   /// not a legal play. Automatically resolves the trick once 4 cards are
   /// in, feeding the winner in as the next leader.
+  ///
+  /// If [seat] announced a declaration but never revealed it, playing their
+  /// card during trick 2 automatically forfeits it, per the "announce in
+  /// trick 1, reveal before your trick-2 card, or it doesn't count" rule.
   void playCard(Seat seat, PlayingCard card) {
     if (isHandComplete) {
       throw StateError('Hand already complete.');
@@ -96,6 +196,11 @@ class PilottaHand {
     }
     if (!currentTrick.legalPlays(hand).contains(card)) {
       throw ArgumentError('$card is not a legal play for $seat right now.');
+    }
+
+    if (completedTricks.length == 1 &&
+        _declarationState[seat] == DeclarationAnnounceState.announced) {
+      _declarationState[seat] = DeclarationAnnounceState.forfeited;
     }
 
     currentTrick.play(seat, card);
@@ -111,16 +216,30 @@ class PilottaHand {
       completedTricks.add(finishedTrick);
       if (!isHandComplete) {
         _nextLeader = winner;
-        _currentTrick = Trick(leader: _nextLeader, trumpSuit: contract.trumpSuit);
+        _currentTrick = Trick(
+          leader: _nextLeader,
+          trumpSuit: contract.trumpSuit,
+          mustOvertrumpAllSuits: mustOvertrumpAllSuits,
+        );
       }
     }
   }
 
-  DeclarationOutcome _resolveDeclarations(Map<Seat, List<PlayingCard>> originalHands) {
-    final bestPerSeat = <Seat, Declaration?>{
-      for (final seat in Seat.values)
-        seat: bestDeclaration(seat, originalHands[seat]!, contract.trumpSuit),
-    };
+  DeclarationOutcome _resolveDeclarations() {
+    final bestPerSeat = <Seat, Declaration?>{};
+    final forfeitedPerSeat = <Seat, Declaration>{};
+    for (final seat in Seat.values) {
+      final state = _declarationState[seat];
+      if (state == DeclarationAnnounceState.revealed) {
+        bestPerSeat[seat] = bestDeclarationOf(seat);
+      } else {
+        bestPerSeat[seat] = null;
+        if (state == DeclarationAnnounceState.forfeited) {
+          final forfeited = bestDeclarationOf(seat);
+          if (forfeited != null) forfeitedPerSeat[seat] = forfeited;
+        }
+      }
+    }
 
     Declaration? overallBest;
     for (final decl in bestPerSeat.values) {
@@ -151,7 +270,7 @@ class PilottaHand {
 
     Seat? beloteSeat;
     for (final seat in Seat.values) {
-      final hand = originalHands[seat]!;
+      final hand = _originalHands[seat]!;
       final holdsKing =
           hand.any((c) => c.suit == contract.trumpSuit && c.rank == Rank.king);
       final holdsQueen =
@@ -164,17 +283,20 @@ class PilottaHand {
 
     return DeclarationOutcome(
       bestPerSeat: bestPerSeat,
+      forfeitedPerSeat: forfeitedPerSeat,
       winningTeam: winningTeam,
       winningTeamPoints: winningPoints,
       beloteSeat: beloteSeat,
     );
   }
 
-  /// Computes the final score. [originalHands] must be the 8-card hands as
-  /// dealt before any cards were played (declarations are evaluated against
-  /// them), which callers should retain themselves since [PilottaHand]
-  /// mutates its internal copies as cards are played.
-  HandResult finish(Map<Seat, List<PlayingCard>> originalHands) {
+  /// Computes the final score. Declarations are evaluated against each
+  /// seat's original 8-card hand as dealt, restricted to seats who
+  /// correctly announced (trick 1) and revealed (before their trick-2
+  /// card) theirs — see [announceDeclaration]/[revealDeclaration]. Belote/
+  /// Pilotta (King+Queen of trump) is exempt from that timing and from the
+  /// cross-team comparison, and always counts for whichever team holds it.
+  HandResult finish() {
     if (!isHandComplete) {
       throw StateError('Cannot score a hand before all 8 tricks are played.');
     }
@@ -195,7 +317,7 @@ class PilottaHand {
                     (_lastTrickTeam == team ? 10 : 0),
     };
 
-    final declarations = _resolveDeclarations(originalHands);
+    final declarations = _resolveDeclarations();
 
     int teamShare(Team team) {
       var points = trickPoints[team]!;

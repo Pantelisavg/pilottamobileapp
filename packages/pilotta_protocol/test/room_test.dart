@@ -150,6 +150,137 @@ void main() {
     });
   });
 
+  group('Declarations (announce/reveal)', () {
+    /// Finds a seed whose dealt hand gives at least one seat an actual
+    /// declaration to test the announce/reveal flow against, and drives
+    /// the auction (south bids 80 spades, everyone else passes) to reach
+    /// [RoomPhase.playing] deterministically regardless of seed.
+    PilottaRoom roomWithADeclaration() {
+      for (var seed = 0; seed < 60; seed++) {
+        final room = PilottaRoom(roomCode: 'IIII', targetScore: 101, random: Random(seed));
+        for (final name in ['A', 'B', 'C', 'D']) {
+          room.join(name);
+        }
+        room.start();
+        final firstToAct = room.auction!.seatToAct;
+        room.handleBid(firstToAct, SuitBidCall(firstToAct, Suit.spades, 80));
+        var next = firstToAct.next;
+        while (room.phase == RoomPhase.bidding) {
+          room.handleBid(next, PassCall(next));
+          next = next.next;
+        }
+        if (Seat.values.any((s) => room.hand!.bestDeclarationOf(s) != null)) {
+          return room;
+        }
+        room.dispose();
+      }
+      fail('No seed in range produced a hand with any declaration.');
+    }
+
+    test('a human seat can announce during trick 1 and reveal before their '
+        'trick-2 card, and it counts towards the final score', () {
+      final room = roomWithADeclaration();
+      final seat = Seat.values.firstWhere((s) => room.hand!.bestDeclarationOf(s) != null);
+      final expectedPoints = room.hand!.bestDeclarationOf(seat)!.pointValue();
+
+      expect(room.handleAnnounceDeclaration(seat), isNull);
+      expect(room.hand!.declarationStateOf(seat), DeclarationAnnounceState.announced);
+
+      // Play out trick 1 with everyone's first legal card.
+      while (room.hand!.completedTricks.isEmpty) {
+        final toAct = room.hand!.currentTrick.seatToPlay;
+        room.handlePlayCard(toAct, room.hand!.legalPlays(toAct).first);
+      }
+
+      // Play trick 2 up to (not including) this seat's own turn, then reveal.
+      while (room.hand!.currentTrick.seatToPlay != seat) {
+        final toAct = room.hand!.currentTrick.seatToPlay;
+        room.handlePlayCard(toAct, room.hand!.legalPlays(toAct).first);
+      }
+      expect(room.handleRevealDeclaration(seat), isNull);
+      expect(room.hand!.declarationStateOf(seat), DeclarationAnnounceState.revealed);
+
+      // Play out the rest of the hand.
+      while (room.phase == RoomPhase.playing) {
+        final toAct = room.hand!.currentTrick.seatToPlay;
+        room.handlePlayCard(toAct, room.hand!.legalPlays(toAct).first);
+      }
+
+      final result = room.lastHandResult!;
+      expect(result.declarations.bestPerSeat[seat]?.pointValue(), expectedPoints);
+      room.dispose();
+    });
+
+    test('a human seat that forgets to reveal forfeits the declaration', () {
+      final room = roomWithADeclaration();
+      final seat = Seat.values.firstWhere((s) => room.hand!.bestDeclarationOf(s) != null);
+
+      expect(room.handleAnnounceDeclaration(seat), isNull);
+
+      // Play the whole hand out without ever revealing.
+      while (room.phase == RoomPhase.playing) {
+        final toAct = room.hand!.currentTrick.seatToPlay;
+        room.handlePlayCard(toAct, room.hand!.legalPlays(toAct).first);
+      }
+
+      final result = room.lastHandResult!;
+      expect(result.declarations.bestPerSeat[seat], isNull);
+      expect(result.declarations.forfeitedPerSeat[seat], isNotNull);
+      room.dispose();
+    });
+
+    test('a bot-controlled seat cannot announce or reveal directly — bots '
+        'handle their own declarations automatically', () {
+      fakeAsync((async) {
+        final room = PilottaRoom(
+          roomCode: 'KKKK',
+          targetScore: 101,
+          random: Random(6),
+          botBidDelay: const Duration(milliseconds: 5),
+          botPlayDelay: const Duration(milliseconds: 5),
+        );
+        room.join('Solo');
+        room.start(); // fills west/north/east with bots
+        room.setConnected(Seat.south, false); // south plays as a bot too
+        var guard = 0;
+        while (room.phase == RoomPhase.bidding && guard++ < 2000) {
+          async.elapse(const Duration(milliseconds: 5));
+        }
+        expect(room.phase, RoomPhase.playing);
+
+        final botSeat = Seat.values.firstWhere((s) => room.isBotControlled(s));
+        expect(room.handleAnnounceDeclaration(botSeat), isNotNull);
+        expect(room.handleRevealDeclaration(botSeat), isNotNull);
+        room.dispose();
+      });
+    });
+
+    test('the room house-rule flag is threaded down to actual trick '
+        'legality (mustOvertrumpAllSuits)', () {
+      final room = PilottaRoom(
+        roomCode: 'JJJJ',
+        targetScore: 101,
+        random: Random(7),
+        mustOvertrumpAllSuits: true,
+      );
+      // All 4 seats human, so bidding is fully caller-driven with no risk
+      // of a bot-controlled seat rejecting a manually-issued call.
+      for (final name in ['A', 'B', 'C', 'D']) {
+        room.join(name);
+      }
+      room.start();
+      final firstToAct = room.auction!.seatToAct;
+      room.handleBid(firstToAct, SuitBidCall(firstToAct, Suit.spades, 80));
+      var next = firstToAct.next;
+      while (room.phase == RoomPhase.bidding) {
+        room.handleBid(next, PassCall(next));
+        next = next.next;
+      }
+      expect(room.hand!.mustOvertrumpAllSuits, isTrue);
+      room.dispose();
+    });
+  });
+
   group('Disconnect / reconnect resilience', () {
     test('a disconnected human seat is played by a bot, and control returns on reconnect', () {
       fakeAsync((async) {

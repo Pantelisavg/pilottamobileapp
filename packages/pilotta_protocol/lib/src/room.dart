@@ -29,6 +29,10 @@ class PilottaRoom {
   final Duration botBidDelay;
   final Duration botPlayDelay;
 
+  /// House-rule variant threaded down to every hand's tricks — see
+  /// [Trick.mustOvertrumpAllSuits]. Fixed for the lifetime of the room.
+  final bool mustOvertrumpAllSuits;
+
   final Random _random;
   late final SimpleBot _bot;
   late final MatchScoreboard scoreboard;
@@ -56,6 +60,7 @@ class PilottaRoom {
     Random? random,
     this.botBidDelay = const Duration(milliseconds: 500),
     this.botPlayDelay = const Duration(milliseconds: 600),
+    this.mustOvertrumpAllSuits = false,
   }) : _random = random ?? Random() {
     _bot = SimpleBot(_random);
     scoreboard = MatchScoreboard(targetScore: targetScore);
@@ -111,6 +116,7 @@ class PilottaRoom {
     // Disconnecting hands control to the bot immediately if it was this
     // seat's turn; reconnecting is a no-op here (isBotControlled is now
     // false again, so these simply won't schedule anything).
+    _maybeAutoDeclareForBots();
     _maybeRunBotBidding();
     _maybeRunBotPlay();
     _notify();
@@ -214,20 +220,57 @@ class PilottaRoom {
       contract: contract,
       initialHands: _originalHands!,
       firstLeader: _dealer.next,
+      mustOvertrumpAllSuits: mustOvertrumpAllSuits,
     );
     phase = RoomPhase.playing;
+    banner = null;
 
-    final decls = <String>[];
-    for (final seat in Seat.values) {
-      final d = bestDeclaration(seat, _originalHands![seat]!, contract.trumpSuit);
-      if (d != null) {
-        decls.add('${_seatLabel(seat)}: ${_declLabel(d)} (${d.pointValue()} π.)');
-      }
-    }
-    banner = decls.isEmpty ? null : decls.join('  •  ');
-
+    _maybeAutoDeclareForBots();
     _notify();
     _maybeRunBotPlay();
+  }
+
+  /// Bots always announce a declaration the instant they're able to (trick
+  /// 1) and reveal it immediately after (they never "forget"), for every
+  /// bot-controlled seat that hasn't already resolved theirs. Called
+  /// whenever a seat might have just become bot-controlled (a fresh hand,
+  /// or a human disconnecting mid-hand).
+  void _maybeAutoDeclareForBots() {
+    final h = hand;
+    if (h == null) return;
+    for (final seat in Seat.values) {
+      if (!isBotControlled(seat)) continue;
+      if (h.canAnnounceDeclaration(seat)) {
+        h.announceDeclaration(seat);
+      }
+      if (h.canRevealDeclaration(seat)) {
+        h.revealDeclaration(seat);
+      }
+    }
+  }
+
+  /// Returns an error message if [seat] cannot announce a declaration right
+  /// now, or null on success.
+  String? handleAnnounceDeclaration(Seat seat) {
+    final h = hand;
+    if (phase != RoomPhase.playing || h == null) return 'Δεν παίζεται φύλλο τώρα.';
+    if (isBotControlled(seat)) return 'Η θέση ελέγχεται από bot.';
+    if (!h.canAnnounceDeclaration(seat)) return 'Δεν μπορείς να δηλώσεις τώρα.';
+    h.announceDeclaration(seat);
+    _notify();
+    return null;
+  }
+
+  /// Returns an error message if [seat] cannot reveal their declaration
+  /// right now, or null on success.
+  String? handleRevealDeclaration(Seat seat) {
+    final h = hand;
+    if (phase != RoomPhase.playing || h == null) return 'Δεν παίζεται φύλλο τώρα.';
+    if (isBotControlled(seat)) return 'Η θέση ελέγχεται από bot.';
+    if (!h.canRevealDeclaration(seat)) return 'Δεν μπορείς να αποκαλύψεις τώρα.';
+    h.revealDeclaration(seat);
+    _notify();
+    return null;
   }
 
   // ---------------------------------------------------------------- playing
@@ -265,7 +308,7 @@ class PilottaRoom {
   }
 
   void _finishHand() {
-    final result = hand!.finish(_originalHands!);
+    final result = hand!.finish();
     lastHandResult = result;
     scoreboard.addHand(result);
     phase = RoomPhase.handSummary;
@@ -348,30 +391,25 @@ class PilottaRoom {
           .map((e) => {'seat': e.seat.name, 'card': cardToJson(e.card)})
           .toList(),
       trickLeader: h?.currentTrick.leader,
+      declarationStates: h == null
+          ? const {}
+          : {for (final seat in Seat.values) seat: h.declarationStateOf(seat).name},
+      revealedDeclarations: h == null
+          ? const {}
+          : {
+              for (final seat in Seat.values)
+                if (h.declarationStateOf(seat) == DeclarationAnnounceState.revealed)
+                  seat: declarationToJson(h.bestDeclarationOf(seat)!),
+            },
+      yourBestDeclaration: h != null && h.bestDeclarationOf(viewer) != null
+          ? declarationToJson(h.bestDeclarationOf(viewer)!)
+          : null,
+      canAnnounceDeclaration: h?.canAnnounceDeclaration(viewer) ?? false,
+      canRevealDeclaration: h?.canRevealDeclaration(viewer) ?? false,
       banner: banner,
       lastHandResult: lastHandResult != null ? handResultToJson(lastHandResult!) : null,
       readyForNextHand: Set.of(readyForNextHand),
       winnerTeam: scoreboard.winner?.name,
     );
-  }
-
-  static String _seatLabel(Seat seat) {
-    switch (seat) {
-      case Seat.south:
-        return 'Νότος';
-      case Seat.west:
-        return 'Δύση';
-      case Seat.north:
-        return 'Βορράς';
-      case Seat.east:
-        return 'Ανατολή';
-    }
-  }
-
-  static String _declLabel(Declaration d) {
-    if (d.kind == DeclarationKind.carre) {
-      return 'Καρέ ${d.carreRank.short}';
-    }
-    return 'Σκάλα ${d.length}';
   }
 }

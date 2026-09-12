@@ -86,6 +86,9 @@ Map<String, dynamic> declarationOutcomeToJson(DeclarationOutcome o) => {
         for (final e in o.bestPerSeat.entries)
           if (e.value != null) e.key.name: declarationToJson(e.value!),
       },
+      'forfeitedPerSeat': {
+        for (final e in o.forfeitedPerSeat.entries) e.key.name: declarationToJson(e.value),
+      },
       'winningTeam': o.winningTeam?.name,
       'winningTeamPoints': o.winningTeamPoints,
       'beloteSeat': o.beloteSeat?.name,

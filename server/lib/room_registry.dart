@@ -25,9 +25,13 @@ class RoomRegistry {
     return code;
   }
 
-  PilottaRoom createRoom({required int targetScore}) {
+  PilottaRoom createRoom({required int targetScore, bool mustOvertrumpAllSuits = false}) {
     final code = _generateCode();
-    final room = PilottaRoom(roomCode: code, targetScore: targetScore);
+    final room = PilottaRoom(
+      roomCode: code,
+      targetScore: targetScore,
+      mustOvertrumpAllSuits: mustOvertrumpAllSuits,
+    );
     _rooms[code] = room;
     return room;
   }

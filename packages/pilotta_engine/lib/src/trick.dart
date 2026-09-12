@@ -6,9 +6,21 @@ import 'seat.dart';
 class Trick {
   final Seat leader;
   final Suit trumpSuit;
+
+  /// House-rule variant: when true, a player following suit in ANY suit
+  /// (not just trump) must beat the current best card of that suit if able
+  /// to — not just when trump is the led suit or when forced to cut in with
+  /// trump. Standard rule (false, the default) only requires overtaking in
+  /// trump; plain-suit followers may always play any card of that suit.
+  final bool mustOvertrumpAllSuits;
+
   final List<({Seat seat, PlayingCard card})> _played = [];
 
-  Trick({required this.leader, required this.trumpSuit});
+  Trick({
+    required this.leader,
+    required this.trumpSuit,
+    this.mustOvertrumpAllSuits = false,
+  });
 
   List<({Seat seat, PlayingCard card})> get played => List.unmodifiable(_played);
 
@@ -45,6 +57,13 @@ class Trick {
   /// Every card [seat] is legally allowed to play from [hand], given the
   /// state of this trick so far. Implements, in order of precedence:
   /// 1. Must follow the led suit if holding any card of that suit.
+  /// 1a. Following suit in a *plain* (non-trump) suit is normally free —
+  ///     no obligation to beat the current best card of that suit — unless
+  ///     [mustOvertrumpAllSuits] is enabled, in which case the same
+  ///     must-beat-if-able requirement as rule 2 applies here too, as long
+  ///     as nobody has cut in with trump yet (once a trump has been played,
+  ///     a plain-suit card can never win regardless, so there's nothing to
+  ///     overtake).
   /// 2. If following suit in the trump suit (or forced to play trump per
   ///    rule 3), must overtake the current best trump if able to.
   /// 3. If unable to follow the led suit, must play a trump if holding any.
@@ -58,9 +77,12 @@ class Trick {
     final trumpInHand = hand.where((c) => c.suit == trumpSuit).toList();
 
     if (sameSuit.isNotEmpty) {
-      if (led == trumpSuit) {
-        // Following suit in trump: must overtake the best trump so far if
-        // possible ("must take the trick if possible").
+      final nobodyHasTrumpedIn = best.suit == led;
+      final mustTryToWin =
+          led == trumpSuit || (mustOvertrumpAllSuits && nobodyHasTrumpedIn);
+      if (mustTryToWin) {
+        // Following suit and required to try to win: beat the current best
+        // card of the led suit if possible ("must overtrump if able to").
         final overtaking =
             sameSuit.where((c) => c.outranks(best, trumpSuit)).toList();
         return overtaking.isNotEmpty ? overtaking : sameSuit;

@@ -56,6 +56,23 @@ void main() {
           CreateRoomMessage(playerName: 'Πέτρος', targetScore: 151));
       expect(decoded.playerName, 'Πέτρος');
       expect(decoded.targetScore, 151);
+      expect(decoded.mustOvertrumpAllSuits, isFalse);
+    });
+
+    test('create_room carries the mustOvertrumpAllSuits house-rule flag', () {
+      final decoded = roundTripClient(CreateRoomMessage(
+        playerName: 'Πέτρος',
+        targetScore: 151,
+        mustOvertrumpAllSuits: true,
+      ));
+      expect(decoded.mustOvertrumpAllSuits, isTrue);
+    });
+
+    test('announce_declaration / reveal_declaration', () {
+      expect(roundTripClient(const AnnounceDeclarationMessage()),
+          isA<AnnounceDeclarationMessage>());
+      expect(roundTripClient(const RevealDeclarationMessage()),
+          isA<RevealDeclarationMessage>());
     });
 
     test('join_room', () {
@@ -117,7 +134,27 @@ void main() {
         handSizes: {Seat.south: 2, Seat.west: 8, Seat.north: 8, Seat.east: 8},
         currentTrick: const [],
         trickLeader: Seat.south,
-        banner: 'Νότος: Σκάλα 3 (20 π.)',
+        declarationStates: {
+          Seat.south: DeclarationAnnounceState.announced.name,
+          Seat.west: DeclarationAnnounceState.none.name,
+          Seat.north: DeclarationAnnounceState.revealed.name,
+          Seat.east: DeclarationAnnounceState.forfeited.name,
+        },
+        revealedDeclarations: {
+          Seat.north: declarationToJson(Declaration.sequence(Seat.north, const [
+            PlayingCard(Suit.clubs, Rank.ace),
+            PlayingCard(Suit.clubs, Rank.king),
+            PlayingCard(Suit.clubs, Rank.queen),
+          ])),
+        },
+        yourBestDeclaration: declarationToJson(Declaration.sequence(Seat.south, const [
+          PlayingCard(Suit.spades, Rank.jack),
+          PlayingCard(Suit.spades, Rank.nine),
+          PlayingCard(Suit.spades, Rank.ace),
+        ])),
+        canAnnounceDeclaration: false,
+        canRevealDeclaration: true,
+        banner: 'Όλοι πέρασαν — νέα μοιρασιά.',
         readyForNextHand: {Seat.south},
       );
 
@@ -130,6 +167,13 @@ void main() {
       expect(decoded.handSizes[Seat.west], 8);
       expect(decoded.readyForNextHand, {Seat.south});
       expect(decoded.totals['northSouth'], 40);
+      expect(decoded.declarationStates[Seat.south], DeclarationAnnounceState.announced.name);
+      expect(decoded.declarationStates[Seat.east], DeclarationAnnounceState.forfeited.name);
+      expect(decoded.revealedDeclarations[Seat.north]?['pointValue'], 20);
+      expect(decoded.revealedDeclarations.containsKey(Seat.south), isFalse);
+      expect(decoded.yourBestDeclaration?['pointValue'], 20);
+      expect(decoded.canAnnounceDeclaration, isFalse);
+      expect(decoded.canRevealDeclaration, isTrue);
     });
   });
 }

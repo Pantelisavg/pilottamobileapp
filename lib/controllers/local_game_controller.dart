@@ -18,7 +18,13 @@ class LocalGameController extends ChangeNotifier {
     required int targetScore,
     String playerName = 'Εσύ',
     Random? random,
-  })  : _room = PilottaRoom(roomCode: 'LOCAL', targetScore: targetScore, random: random),
+    bool mustOvertrumpAllSuits = false,
+  })  : _room = PilottaRoom(
+          roomCode: 'LOCAL',
+          targetScore: targetScore,
+          random: random,
+          mustOvertrumpAllSuits: mustOvertrumpAllSuits,
+        ),
         humanSeat = Seat.south {
     _room.addListener(notifyListeners);
     _room.join(playerName);
@@ -55,6 +61,22 @@ class LocalGameController extends ChangeNotifier {
 
   /// Called by the UI when the human plays a card.
   void playCard(PlayingCard card) => _room.handlePlayCard(humanSeat, card);
+
+  /// The human's own best declaration this hand, if any — safe to show
+  /// them immediately regardless of whether they've announced it yet.
+  Declaration? get myBestDeclaration => hand?.bestDeclarationOf(humanSeat);
+
+  bool get canAnnounceDeclaration => hand?.canAnnounceDeclaration(humanSeat) ?? false;
+  bool get canRevealDeclaration => hand?.canRevealDeclaration(humanSeat) ?? false;
+
+  /// Called by the UI when the human announces their declaration (only
+  /// valid during trick 1 — see [canAnnounceDeclaration]).
+  void announceDeclaration() => _room.handleAnnounceDeclaration(humanSeat);
+
+  /// Called by the UI when the human reveals a previously-announced
+  /// declaration (must happen before their trick-2 card — see
+  /// [canRevealDeclaration]).
+  void revealDeclaration() => _room.handleRevealDeclaration(humanSeat);
 
   /// Called by the UI after showing the hand summary, to deal the next hand
   /// (or end the match if the target score has been reached).

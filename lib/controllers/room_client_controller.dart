@@ -45,8 +45,16 @@ abstract class RoomClientController extends ChangeNotifier {
 
   // ------------------------------------------------------------- actions
 
-  void createRoom({required String playerName, required int targetScore}) =>
-      sendMessage(CreateRoomMessage(playerName: playerName, targetScore: targetScore));
+  void createRoom({
+    required String playerName,
+    required int targetScore,
+    bool mustOvertrumpAllSuits = false,
+  }) =>
+      sendMessage(CreateRoomMessage(
+        playerName: playerName,
+        targetScore: targetScore,
+        mustOvertrumpAllSuits: mustOvertrumpAllSuits,
+      ));
 
   void joinRoom({required String roomCode, required String playerName}) =>
       sendMessage(JoinRoomMessage(roomCode: roomCode, playerName: playerName));
@@ -56,6 +64,13 @@ abstract class RoomClientController extends ChangeNotifier {
   void submitBid(AuctionCall call) => sendMessage(BidMessage(call));
 
   void playCard(PlayingCard card) => sendMessage(PlayCardMessage(card));
+
+  /// Announces this player's best declaration (only valid during trick 1).
+  void announceDeclaration() => sendMessage(const AnnounceDeclarationMessage());
+
+  /// Reveals a previously-announced declaration (must happen before this
+  /// player's trick-2 card).
+  void revealDeclaration() => sendMessage(const RevealDeclarationMessage());
 
   void continueAfterHand() => sendMessage(const ReadyForNextHandMessage());
 

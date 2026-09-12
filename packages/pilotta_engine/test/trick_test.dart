@@ -87,6 +87,62 @@ void main() {
       ];
       expect(trick.legalPlays(hand).toSet(), hand.toSet());
     });
+
+    test('standard rule: following a non-trump led suit has no obligation '
+        'to beat the current best card of that suit', () {
+      final trick = Trick(leader: Seat.south, trumpSuit: Suit.spades);
+      trick.play(Seat.south, const PlayingCard(Suit.hearts, Rank.king));
+
+      final hand = [
+        const PlayingCard(Suit.hearts, Rank.seven), // does not beat king
+        const PlayingCard(Suit.hearts, Rank.ace), // beats king
+      ];
+      final legal = trick.legalPlays(hand);
+      expect(legal.toSet(), hand.toSet());
+    });
+
+    test('mustOvertrumpAllSuits house rule: following a non-trump led suit '
+        'must beat the current best card of that suit if able to', () {
+      final trick =
+          Trick(leader: Seat.south, trumpSuit: Suit.spades, mustOvertrumpAllSuits: true);
+      trick.play(Seat.south, const PlayingCard(Suit.hearts, Rank.king));
+
+      final hand = [
+        const PlayingCard(Suit.hearts, Rank.seven), // does not beat king
+        const PlayingCard(Suit.hearts, Rank.ace), // beats king
+      ];
+      final legal = trick.legalPlays(hand);
+      expect(legal, [const PlayingCard(Suit.hearts, Rank.ace)]);
+    });
+
+    test('mustOvertrumpAllSuits house rule: may play any card of the suit '
+        'if none can beat the current best', () {
+      final trick =
+          Trick(leader: Seat.south, trumpSuit: Suit.spades, mustOvertrumpAllSuits: true);
+      trick.play(Seat.south, const PlayingCard(Suit.hearts, Rank.ace)); // already highest
+
+      final hand = [
+        const PlayingCard(Suit.hearts, Rank.seven),
+        const PlayingCard(Suit.hearts, Rank.king),
+      ];
+      final legal = trick.legalPlays(hand);
+      expect(legal.toSet(), hand.toSet());
+    });
+
+    test('mustOvertrumpAllSuits house rule: no obligation once a trump has '
+        'already been cut in, since a plain-suit card can never win anyway', () {
+      final trick =
+          Trick(leader: Seat.south, trumpSuit: Suit.spades, mustOvertrumpAllSuits: true);
+      trick.play(Seat.south, const PlayingCard(Suit.hearts, Rank.seven));
+      trick.play(Seat.west, const PlayingCard(Suit.spades, Rank.seven)); // cut in with trump
+
+      final hand = [
+        const PlayingCard(Suit.hearts, Rank.king), // would beat the 7 of hearts
+        const PlayingCard(Suit.hearts, Rank.eight),
+      ];
+      final legal = trick.legalPlays(hand);
+      expect(legal.toSet(), hand.toSet());
+    });
   });
 
   group('Trick winner + points', () {

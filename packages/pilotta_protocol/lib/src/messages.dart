@@ -16,6 +16,7 @@ sealed class ClientMessage {
         return CreateRoomMessage(
           playerName: json['playerName'] as String,
           targetScore: json['targetScore'] as int,
+          mustOvertrumpAllSuits: json['mustOvertrumpAllSuits'] as bool? ?? false,
         );
       case 'join_room':
         return JoinRoomMessage(
@@ -28,6 +29,10 @@ sealed class ClientMessage {
         return BidMessage(auctionCallFromJson(json['call'] as Map<String, dynamic>));
       case 'play_card':
         return PlayCardMessage(cardFromJson(json['card'] as Map<String, dynamic>));
+      case 'announce_declaration':
+        return const AnnounceDeclarationMessage();
+      case 'reveal_declaration':
+        return const RevealDeclarationMessage();
       case 'ready_for_next_hand':
         return const ReadyForNextHandMessage();
       case 'leave':
@@ -41,11 +46,24 @@ sealed class ClientMessage {
 class CreateRoomMessage extends ClientMessage {
   final String playerName;
   final int targetScore;
-  CreateRoomMessage({required this.playerName, required this.targetScore});
+
+  /// House-rule variant for the whole room — see
+  /// [PilottaRoom.mustOvertrumpAllSuits].
+  final bool mustOvertrumpAllSuits;
+
+  CreateRoomMessage({
+    required this.playerName,
+    required this.targetScore,
+    this.mustOvertrumpAllSuits = false,
+  });
 
   @override
-  Map<String, dynamic> toJson() =>
-      {'type': 'create_room', 'playerName': playerName, 'targetScore': targetScore};
+  Map<String, dynamic> toJson() => {
+        'type': 'create_room',
+        'playerName': playerName,
+        'targetScore': targetScore,
+        'mustOvertrumpAllSuits': mustOvertrumpAllSuits,
+      };
 }
 
 class JoinRoomMessage extends ClientMessage {
@@ -78,6 +96,24 @@ class PlayCardMessage extends ClientMessage {
   PlayCardMessage(this.card);
   @override
   Map<String, dynamic> toJson() => {'type': 'play_card', 'card': cardToJson(card)};
+}
+
+/// Announces the sender's best declaration during trick 1 — see
+/// [PilottaHand.announceDeclaration]. Must still be followed by
+/// [RevealDeclarationMessage] before the sender plays their trick-2 card,
+/// or it's forfeited.
+class AnnounceDeclarationMessage extends ClientMessage {
+  const AnnounceDeclarationMessage();
+  @override
+  Map<String, dynamic> toJson() => {'type': 'announce_declaration'};
+}
+
+/// Reveals the sender's previously-announced declaration — see
+/// [PilottaHand.revealDeclaration].
+class RevealDeclarationMessage extends ClientMessage {
+  const RevealDeclarationMessage();
+  @override
+  Map<String, dynamic> toJson() => {'type': 'reveal_declaration'};
 }
 
 class ReadyForNextHandMessage extends ClientMessage {
@@ -173,6 +209,23 @@ class RoomSnapshotMessage extends ServerMessage {
   final List<Map<String, dynamic>>? currentTrick; // [{seat, card}]
   final Seat? trickLeader;
 
+  /// Every seat's progress through the declaration announce/reveal flow —
+  /// values are [DeclarationAnnounceState] names. Always public: announcing
+  /// is a verbal, audible act at the table.
+  final Map<Seat, String> declarationStates;
+
+  /// The actual declaration content for every seat who has revealed theirs
+  /// — safe to show the whole table since revealing means showing the
+  /// cards. Seats who haven't revealed (or have nothing) are absent.
+  final Map<Seat, Map<String, dynamic>> revealedDeclarations;
+
+  /// [yourSeat]'s own best declaration this hand, if any — always visible
+  /// to them regardless of announce/reveal state, so their UI can offer to
+  /// announce it.
+  final Map<String, dynamic>? yourBestDeclaration;
+  final bool canAnnounceDeclaration;
+  final bool canRevealDeclaration;
+
   final String? banner;
   final Map<String, dynamic>? lastHandResult;
   final Set<Seat> readyForNextHand;
@@ -193,6 +246,11 @@ class RoomSnapshotMessage extends ServerMessage {
     this.handSizes = const {},
     this.currentTrick,
     this.trickLeader,
+    this.declarationStates = const {},
+    this.revealedDeclarations = const {},
+    this.yourBestDeclaration,
+    this.canAnnounceDeclaration = false,
+    this.canRevealDeclaration = false,
     this.banner,
     this.lastHandResult,
     this.readyForNextHand = const {},
@@ -216,6 +274,13 @@ class RoomSnapshotMessage extends ServerMessage {
         'handSizes': {for (final e in handSizes.entries) e.key.name: e.value},
         'currentTrick': currentTrick,
         'trickLeader': trickLeader?.name,
+        'declarationStates': {for (final e in declarationStates.entries) e.key.name: e.value},
+        'revealedDeclarations': {
+          for (final e in revealedDeclarations.entries) e.key.name: e.value,
+        },
+        'yourBestDeclaration': yourBestDeclaration,
+        'canAnnounceDeclaration': canAnnounceDeclaration,
+        'canRevealDeclaration': canRevealDeclaration,
         'banner': banner,
         'lastHandResult': lastHandResult,
         'readyForNextHand': readyForNextHand.map((s) => s.name).toList(),
@@ -246,6 +311,17 @@ class RoomSnapshotMessage extends ServerMessage {
       currentTrick: (json['currentTrick'] as List<dynamic>?)?.cast<Map<String, dynamic>>(),
       trickLeader:
           (json['trickLeader'] as String?) == null ? null : Seat.values.byName(json['trickLeader'] as String),
+      declarationStates: {
+        for (final entry in (json['declarationStates'] as Map<String, dynamic>? ?? const {}).entries)
+          Seat.values.byName(entry.key): entry.value as String,
+      },
+      revealedDeclarations: {
+        for (final entry in (json['revealedDeclarations'] as Map<String, dynamic>? ?? const {}).entries)
+          Seat.values.byName(entry.key): entry.value as Map<String, dynamic>,
+      },
+      yourBestDeclaration: json['yourBestDeclaration'] as Map<String, dynamic>?,
+      canAnnounceDeclaration: json['canAnnounceDeclaration'] as bool? ?? false,
+      canRevealDeclaration: json['canRevealDeclaration'] as bool? ?? false,
       banner: json['banner'] as String?,
       lastHandResult: json['lastHandResult'] as Map<String, dynamic>?,
       readyForNextHand: {

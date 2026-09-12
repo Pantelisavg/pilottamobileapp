@@ -59,6 +59,10 @@ class ConnectionHandler {
         _bid(message);
       case PlayCardMessage():
         _playCard(message);
+      case AnnounceDeclarationMessage():
+        _announceDeclaration();
+      case RevealDeclarationMessage():
+        _revealDeclaration();
       case ReadyForNextHandMessage():
         _readyForNextHand();
       case LeaveMessage():
@@ -71,7 +75,10 @@ class ConnectionHandler {
       _sendError('Είσαι ήδη σε δωμάτιο.');
       return;
     }
-    final room = _registry.createRoom(targetScore: message.targetScore);
+    final room = _registry.createRoom(
+      targetScore: message.targetScore,
+      mustOvertrumpAllSuits: message.mustOvertrumpAllSuits,
+    );
     final seat = room.join(message.playerName);
     if (seat == null) {
       // Unreachable for a brand-new room, but handled for symmetry.
@@ -146,6 +153,28 @@ class ConnectionHandler {
       return;
     }
     final error = room.handlePlayCard(seat, message.card);
+    if (error != null) _sendError(error);
+  }
+
+  void _announceDeclaration() {
+    final room = _room;
+    final seat = _seat;
+    if (room == null || seat == null) {
+      _sendError('Δεν είσαι σε δωμάτιο.');
+      return;
+    }
+    final error = room.handleAnnounceDeclaration(seat);
+    if (error != null) _sendError(error);
+  }
+
+  void _revealDeclaration() {
+    final room = _room;
+    final seat = _seat;
+    if (room == null || seat == null) {
+      _sendError('Δεν είσαι σε δωμάτιο.');
+      return;
+    }
+    final error = room.handleRevealDeclaration(seat);
     if (error != null) _sendError(error);
   }
 
