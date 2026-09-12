@@ -46,8 +46,10 @@ class _BiddingPanelState extends State<BiddingPanel> {
   Widget build(BuildContext context) {
     final minValue = _minimumValue();
     final value = _value < minValue ? minValue : _value;
-    final canBidValue = value <= kMaxBidValue;
-    final canIncrement = value + kBidIncrement <= kMaxBidValue;
+    final canBidAtAll = minValue <= kMaxBidValue;
+    final canBidValue = canBidAtAll && value <= kMaxBidValue;
+    final canIncrement = canBidAtAll && value + kBidIncrement <= kMaxBidValue;
+    final canDecrement = canBidAtAll && value > minValue;
 
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
@@ -60,31 +62,56 @@ class _BiddingPanelState extends State<BiddingPanel> {
         children: [
           const Text('Η δήλωσή σου',
               style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              IconButton(
-                onPressed: value > minValue ? () => setState(() => _value = value - kBidIncrement) : null,
-                icon: const Icon(Icons.remove_circle_outline),
-                color: Colors.white,
-              ),
-              SizedBox(
-                width: 88,
-                // Shown in the usual colloquial shorthand (8 to 80, for an
-                // actual 80-800) — the same tens convention the scoreboard
-                // uses for its running totals.
-                child: Text('${value ~/ 10}',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.bold)),
-              ),
-              IconButton(
-                onPressed: canIncrement ? () => setState(() => _value = value + kBidIncrement) : null,
-                icon: const Icon(Icons.add_circle_outline),
-                color: Colors.white,
-              ),
-            ],
-          ),
+          const SizedBox(height: 8),
+          if (!canBidAtAll)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Text('Έφτασε στο ανώτατο όριο (${kMaxBidValue ~/ 10})',
+                  style: const TextStyle(color: Colors.white54, fontSize: 13)),
+            )
+          else ...[
+            // Shown in the usual colloquial shorthand (8 to 80, for an
+            // actual 80-800) — the same tens convention the scoreboard
+            // uses for its running totals.
+            Text('${value ~/ 10}',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white, fontSize: 34, fontWeight: FontWeight.bold)),
+            // A slider so reaching a far-off value (e.g. jumping straight
+            // to 40) doesn't mean tapping "+" dozens of times — drag for a
+            // big jump, then fine-tune with the +/- buttons if needed.
+            Row(
+              children: [
+                IconButton(
+                  onPressed: canDecrement ? () => setState(() => _value = value - kBidIncrement) : null,
+                  icon: const Icon(Icons.remove_circle_outline),
+                  color: Colors.white,
+                ),
+                Expanded(
+                  child: SliderTheme(
+                    data: SliderTheme.of(context).copyWith(
+                      activeTrackColor: Colors.amber,
+                      thumbColor: Colors.amber,
+                      inactiveTrackColor: Colors.white24,
+                      valueIndicatorColor: Colors.amber.shade700,
+                    ),
+                    child: Slider(
+                      min: minValue.toDouble(),
+                      max: kMaxBidValue.toDouble(),
+                      divisions: (kMaxBidValue - minValue) ~/ kBidIncrement,
+                      value: value.toDouble(),
+                      label: '${value ~/ 10}',
+                      onChanged: (v) => setState(() => _value = v.round()),
+                    ),
+                  ),
+                ),
+                IconButton(
+                  onPressed: canIncrement ? () => setState(() => _value = value + kBidIncrement) : null,
+                  icon: const Icon(Icons.add_circle_outline),
+                  color: Colors.white,
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: 8),
           Wrap(
             spacing: 10,
@@ -114,7 +141,10 @@ class _BiddingPanelState extends State<BiddingPanel> {
                     canBidValue ? () => widget.onCall(SuitBidCall(widget.seat, _suit, value)) : null,
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
-                  children: [Text('Δήλωση ${value ~/ 10} '), SuitIcon(_suit, size: 16)],
+                  children: [
+                    Text(canBidAtAll ? 'Δήλωση ${value ~/ 10} ' : 'Δήλωση '),
+                    SuitIcon(_suit, size: 16),
+                  ],
                 ),
               ),
               FilledButton.tonal(
