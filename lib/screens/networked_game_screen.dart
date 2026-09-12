@@ -3,12 +3,48 @@ import 'package:pilotta_engine/pilotta_engine.dart';
 import 'package:pilotta_protocol/pilotta_protocol.dart';
 import 'package:provider/provider.dart';
 
+import '../controllers/online_game_controller.dart';
 import '../controllers/room_client_controller.dart';
+import '../settings/app_settings.dart';
+import '../settings/sound.dart';
+import '../widgets/auction_call_label.dart';
 import '../widgets/bidding_panel.dart';
 import '../widgets/declaration_label.dart';
+import '../widgets/hand_card.dart';
+import '../widgets/illegal_reason.dart';
+import '../widgets/last_trick_dialog.dart';
 import '../widgets/playing_card_widget.dart';
+import '../widgets/scoreboard_sheet.dart';
 import '../widgets/seat_layout.dart';
 import '../widgets/suit_icon.dart';
+import '../widgets/turn_timer_ring.dart';
+
+List<ScoreRow> _buildOnlineScoreRows(
+    List<Map<String, dynamic>> history, Seat viewerSeat) {
+  final myTeamKey =
+      viewerSeat.team == Team.northSouth ? 'northSouth' : 'eastWest';
+  final theirTeamKey = myTeamKey == 'northSouth' ? 'eastWest' : 'northSouth';
+  return [
+    for (var i = 0; i < history.length; i++)
+      () {
+        final entry = history[i];
+        final contract = entry['contract'] as Map<String, dynamic>;
+        final rounded = entry['rounded'] as Map<String, dynamic>;
+        return ScoreRow(
+          index: i + 1,
+          trumpSuit: Suit.values.byName(contract['trumpSuit'] as String),
+          isCapot: contract['isCapot'] as bool,
+          biddingValue: contract['value'] as int,
+          biddingSeatLabel: seatLabelRelativeTo(
+              Seat.values.byName(contract['biddingSeat'] as String),
+              viewerSeat),
+          contractMade: entry['contractMade'] as bool,
+          roundedMine: rounded[myTeamKey] as int,
+          roundedTheirs: rounded[theirTeamKey] as int,
+        );
+      }(),
+  ];
+}
 
 class NetworkedGameScreen extends StatelessWidget {
   const NetworkedGameScreen({super.key});
@@ -50,7 +86,9 @@ class _ConnectingError extends StatelessWidget {
         children: [
           const Icon(Icons.wifi_off, color: Colors.white54, size: 48),
           const SizedBox(height: 12),
-          Text(message, style: const TextStyle(color: Colors.white70), textAlign: TextAlign.center),
+          Text(message,
+              style: const TextStyle(color: Colors.white70),
+              textAlign: TextAlign.center),
           const SizedBox(height: 20),
           OutlinedButton(
             onPressed: () => Navigator.of(context).pop(),
@@ -82,7 +120,8 @@ class _LobbyWaitingRoom extends StatelessWidget {
           padding: const EdgeInsets.all(24),
           child: Column(
             children: [
-              const Text('Κωδικός δωματίου', style: TextStyle(color: Colors.white70)),
+              const Text('Κωδικός δωματίου',
+                  style: TextStyle(color: Colors.white70)),
               const SizedBox(height: 6),
               SelectableText(
                 snapshot.roomCode,
@@ -94,10 +133,13 @@ class _LobbyWaitingRoom extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 8),
-              const Text('Μοιράσου τον κωδικό με φίλους για να μπουν στο δωμάτιο.',
-                  style: TextStyle(color: Colors.white54, fontSize: 12), textAlign: TextAlign.center),
+              const Text(
+                  'Μοιράσου τον κωδικό με φίλους για να μπουν στο δωμάτιο.',
+                  style: TextStyle(color: Colors.white54, fontSize: 12),
+                  textAlign: TextAlign.center),
               const SizedBox(height: 32),
-              for (final seat in Seat.values) _SeatRow(seat: seat, info: snapshot.seats[seat]!),
+              for (final seat in Seat.values)
+                _SeatRow(seat: seat, info: snapshot.seats[seat]!),
               const Spacer(),
               if (controller.isHost)
                 FilledButton.icon(
@@ -111,7 +153,8 @@ class _LobbyWaitingRoom extends StatelessWidget {
               if (controller.lastError != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 12),
-                  child: Text(controller.lastError!, style: const TextStyle(color: Colors.redAccent)),
+                  child: Text(controller.lastError!,
+                      style: const TextStyle(color: Colors.redAccent)),
                 ),
             ],
           ),
@@ -143,10 +186,13 @@ class _SeatRow extends StatelessWidget {
                 : info.playerName == null
                     ? Icons.person_outline
                     : Icons.person,
-            color: info.connected || info.playerName == null ? Colors.white70 : Colors.orangeAccent,
+            color: info.connected || info.playerName == null
+                ? Colors.white70
+                : Colors.orangeAccent,
           ),
           const SizedBox(width: 10),
-          Expanded(child: Text(label, style: const TextStyle(color: Colors.white))),
+          Expanded(
+              child: Text(label, style: const TextStyle(color: Colors.white))),
         ],
       ),
     );
@@ -179,13 +225,16 @@ class _OnlineTable extends StatelessWidget {
                   Container(
                     width: double.infinity,
                     color: Colors.amber.shade800,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     child: Text(snapshot.banner!,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(color: Colors.white, fontSize: 12)),
+                        style:
+                            const TextStyle(color: Colors.white, fontSize: 12)),
                   ),
                 Expanded(child: _OnlineTableArea(controller: controller)),
-                if (snapshot.canAnnounceDeclaration || snapshot.canRevealDeclaration)
+                if (snapshot.canAnnounceDeclaration ||
+                    snapshot.canRevealDeclaration)
                   _OnlineDeclarationPanel(controller: controller),
                 // The hand stays visible above the bidding panel — you
                 // need to see your cards while you decide what to call.
@@ -194,7 +243,10 @@ class _OnlineTable extends StatelessWidget {
                   BiddingPanel(
                     auction: controller.auction!,
                     seat: me,
-                    onCall: controller.submitBid,
+                    onCall: (call) {
+                      playTapSound(context.read<AppSettings>());
+                      controller.submitBid(call);
+                    },
                   ),
               ],
             ),
@@ -202,6 +254,8 @@ class _OnlineTable extends StatelessWidget {
               _OnlineHandSummaryOverlay(controller: controller),
             if (snapshot.phase == RoomPhase.matchOver)
               _OnlineMatchOverOverlay(controller: controller),
+            if (controller.status == ConnectionStatus.disconnected)
+              _DisconnectOverlay(controller: controller),
           ],
         ),
       ),
@@ -216,24 +270,45 @@ class _OnlineScoreHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final snapshot = controller.snapshot!;
-    final myTeamKey = controller.mySeat!.team == Team.northSouth ? 'northSouth' : 'eastWest';
+    final myTeamKey =
+        controller.mySeat!.team == Team.northSouth ? 'northSouth' : 'eastWest';
     final theirTeamKey = myTeamKey == 'northSouth' ? 'eastWest' : 'northSouth';
     final contract = snapshot.contract;
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Εμείς ${snapshot.totals[myTeamKey]}  –  Αυτοί ${snapshot.totals[theirTeamKey]}',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            Text('Στόχος: ${snapshot.targetScore} · Δωμάτιο ${snapshot.roomCode}',
-                style: const TextStyle(fontSize: 11, color: Colors.white70)),
-          ],
+        InkWell(
+          onTap: () => showScoreboardSheet(
+            context,
+            rows: _buildOnlineScoreRows(
+                snapshot.matchHistory, controller.mySeat!),
+            totalMine: snapshot.totals[myTeamKey]!,
+            totalTheirs: snapshot.totals[theirTeamKey]!,
+            targetScore: snapshot.targetScore,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Εμείς ${snapshot.totals[myTeamKey]}  –  Αυτοί ${snapshot.totals[theirTeamKey]}',
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.receipt_long,
+                      color: Colors.white54, size: 16),
+                ],
+              ),
+              Text(
+                  'Στόχος: ${snapshot.targetScore} · Δωμάτιο ${snapshot.roomCode}',
+                  style: const TextStyle(fontSize: 11, color: Colors.white70)),
+            ],
+          ),
         ),
         if (contract != null)
           Row(
@@ -241,10 +316,12 @@ class _OnlineScoreHeader extends StatelessWidget {
             children: [
               Text(
                 contract['isCapot'] == true ? 'Καπότο' : '${contract['value']}',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                style:
+                    const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               const SizedBox(width: 4),
-              SuitIcon(Suit.values.byName(contract['trumpSuit'] as String), size: 22, color: Colors.white),
+              SuitIcon(Suit.values.byName(contract['trumpSuit'] as String),
+                  size: 22, color: Colors.white),
             ],
           ),
       ],
@@ -271,7 +348,32 @@ class _OnlineTableArea extends StatelessWidget {
             ),
         Center(child: _OnlineTrickArea(controller: controller)),
         if (snapshot.phase == RoomPhase.bidding)
-          const Align(alignment: Alignment.center, child: _OnlineAuctionStatus()),
+          const Align(
+              alignment: Alignment.center, child: _OnlineAuctionStatus()),
+        if (snapshot.phase == RoomPhase.playing &&
+            snapshot.lastCompletedTrick != null)
+          Positioned(
+            top: 0,
+            left: 0,
+            child: IconButton(
+              tooltip: 'Προηγούμενη μπάζα',
+              icon: const Icon(Icons.history, color: Colors.white70),
+              onPressed: () {
+                final played = snapshot.lastCompletedTrick!
+                    .map((e) => (
+                          seat: Seat.values.byName(e['seat'] as String),
+                          card: cardFromJson(e['card'] as Map<String, dynamic>),
+                        ))
+                    .toList();
+                showLastTrickDialog(
+                  context,
+                  played: played,
+                  winner: snapshot.lastCompletedTrickWinner,
+                  viewerSeat: me,
+                );
+              },
+            ),
+          ),
       ],
     );
   }
@@ -296,19 +398,37 @@ class _OnlineOpponentSeat extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: isActive ? Colors.amber.shade700 : Colors.black38,
-              borderRadius: BorderRadius.circular(12),
-              border: isPartner ? Border.all(color: Colors.lightGreenAccent, width: 1.5) : null,
-            ),
-            child: Text(
-              '${seatLabelRelativeTo(seat, controller.mySeat!)}'
-              '${info.isBot ? " 🤖" : info.connected ? "" : " ⚠"}'
-              ' · $cardCount',
-              style: const TextStyle(color: Colors.white, fontSize: 11),
-            ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: isActive ? Colors.amber.shade700 : Colors.black38,
+                  borderRadius: BorderRadius.circular(12),
+                  border: isPartner
+                      ? Border.all(color: Colors.lightGreenAccent, width: 1.5)
+                      : null,
+                ),
+                child: Text(
+                  '${seatLabelRelativeTo(seat, controller.mySeat!)}'
+                  '${info.isBot ? " 🤖" : info.connected ? "" : " ⚠"}'
+                  ' · $cardCount',
+                  style: const TextStyle(color: Colors.white, fontSize: 11),
+                ),
+              ),
+              // A purely cosmetic pace cue — nothing auto-plays if it runs
+              // out, there is no server-side turn timeout.
+              if (isActive && !info.isBot && info.connected) ...[
+                const SizedBox(width: 4),
+                TurnTimerRing(
+                  key: ValueKey(
+                      '${snapshot.phase.name}|${snapshot.seatToAct?.name}'),
+                  active: true,
+                ),
+              ],
+            ],
           ),
           if (declState == DeclarationAnnounceState.announced.name)
             const Padding(
@@ -319,8 +439,11 @@ class _OnlineOpponentSeat extends StatelessWidget {
           else if (declState == DeclarationAnnounceState.revealed.name)
             Padding(
               padding: const EdgeInsets.only(top: 2),
-              child: Text(declarationLabelFromJson(snapshot.revealedDeclarations[seat]!),
-                  style: const TextStyle(color: Colors.lightGreenAccent, fontSize: 9)),
+              child: Text(
+                  declarationLabelFromJson(
+                      snapshot.revealedDeclarations[seat]!),
+                  style: const TextStyle(
+                      color: Colors.lightGreenAccent, fontSize: 9)),
             ),
           const SizedBox(height: 4),
           SizedBox(
@@ -352,6 +475,7 @@ class _OnlineTrickArea extends StatelessWidget {
     final trick = snapshot.currentTrick;
     if (trick == null) return const SizedBox.shrink();
 
+    final cardScale = context.watch<AppSettings>().cardScale;
     return SizedBox(
       width: 220,
       height: 200,
@@ -360,10 +484,11 @@ class _OnlineTrickArea extends StatelessWidget {
           for (final entry in trick)
             Align(
               alignment: seatAlignmentRelativeTo(
-                  Seat.values.byName(entry['seat'] as String), controller.mySeat!),
+                  Seat.values.byName(entry['seat'] as String),
+                  controller.mySeat!),
               child: PlayingCardWidget(
                 card: cardFromJson(entry['card'] as Map<String, dynamic>),
-                width: 52,
+                width: 52 * cardScale,
               ),
             ),
         ],
@@ -386,30 +511,65 @@ class _OnlineAuctionStatus extends StatelessWidget {
 
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(16)),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('Δηλώσεις', style: TextStyle(color: Colors.white70, fontSize: 12)),
-              const SizedBox(height: 6),
-              if (bid == null)
-                const Text('Καμία δήλωση ακόμα',
-                    style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold))
-              else
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text('${bid.isCapot ? 'Καπότο' : bid.value} ',
-                        style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-                    SuitIcon(bid.suit, size: 18, color: Colors.white),
-                    Text(' — ${seatLabelRelativeTo(bid.seat, me)}',
-                        style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-                  ],
-                ),
-              const SizedBox(height: 6),
-              Text('Σειρά: ${seatLabelRelativeTo(auction.seatToAct, me)}',
-                  style: const TextStyle(color: Colors.amberAccent, fontSize: 12)),
-            ],
+          decoration: BoxDecoration(
+              color: Colors.black54, borderRadius: BorderRadius.circular(16)),
+          // SingleChildScrollView clamps to whatever height the Align/Stack
+          // above actually has available and scrolls instead of
+          // overflowing on a short screen.
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('Δηλώσεις',
+                    style: TextStyle(color: Colors.white70, fontSize: 12)),
+                const SizedBox(height: 6),
+                if (bid == null)
+                  const Text('Καμία δήλωση ακόμα',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold))
+                else
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('${bid.isCapot ? 'Καπότο' : bid.value} ',
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold)),
+                      SuitIcon(bid.suit, size: 18, color: Colors.white),
+                      Text(' — ${seatLabelRelativeTo(bid.seat, me)}',
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                const SizedBox(height: 6),
+                Text('Σειρά: ${seatLabelRelativeTo(auction.seatToAct, me)}',
+                    style: const TextStyle(
+                        color: Colors.amberAccent, fontSize: 12)),
+                if (auction.calls.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  const Divider(height: 1, color: Colors.white24),
+                  const SizedBox(height: 6),
+                  // Capped to the most recent few calls — a plain,
+                  // unscrolled list so its height is always small and
+                  // bounded, whatever Align/Stack above has room for.
+                  for (final call
+                      in auction.calls.reversed.take(5).toList().reversed)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: auctionCallLabel(
+                            call, seatLabelRelativeTo(call.seat, me)),
+                      ),
+                    ),
+                ],
+              ],
+            ),
           ),
         );
       },
@@ -444,7 +604,9 @@ class _OnlineDeclarationPanel extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           FilledButton(
-            onPressed: canAnnounce ? controller.announceDeclaration : controller.revealDeclaration,
+            onPressed: canAnnounce
+                ? controller.announceDeclaration
+                : controller.revealDeclaration,
             child: Text(canAnnounce ? 'Δήλωσε' : 'Αποκάλυψε'),
           ),
         ],
@@ -462,14 +624,20 @@ class _OnlineHumanHand extends StatelessWidget {
     final snapshot = controller.snapshot!;
     final cards = snapshot.yourHand;
     final isMyTurn = controller.isMyTurnToPlay;
-    // The server rejects illegal plays, but we don't have local rules
-    // knowledge of exactly which cards are legal without the hidden hands
-    // of other players — so every card is tappable on your turn, and any
-    // rejection comes back as a (rare) error banner instead.
+    // Legality is computed client-side from the trick's public state (see
+    // RoomClientController.legalPlaysForMe) — it never depends on other
+    // players' hidden cards, so this exactly matches what the server will
+    // accept. The server still validates independently; any rejection
+    // (should be rare) comes back as an error banner.
+    final legal = controller.legalPlaysForMe.toSet();
+    final trick = controller.currentTrick;
+    final cardScale = context.watch<AppSettings>().cardScale;
     final sorted = [...cards]..sort((a, b) {
         final suitDiff = a.suit.index.compareTo(b.suit.index);
         if (suitDiff != 0) return suitDiff;
-        return plainOrderHighToLow.indexOf(a.rank).compareTo(plainOrderHighToLow.indexOf(b.rank));
+        return plainOrderHighToLow
+            .indexOf(a.rank)
+            .compareTo(plainOrderHighToLow.indexOf(b.rank));
       });
 
     return Container(
@@ -481,7 +649,9 @@ class _OnlineHumanHand extends StatelessWidget {
           if (controller.lastError != null)
             Padding(
               padding: const EdgeInsets.only(bottom: 6),
-              child: Text(controller.lastError!, style: const TextStyle(color: Colors.redAccent, fontSize: 12)),
+              child: Text(controller.lastError!,
+                  style:
+                      const TextStyle(color: Colors.redAccent, fontSize: 12)),
             ),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
@@ -491,11 +661,18 @@ class _OnlineHumanHand extends StatelessWidget {
                 for (final card in sorted)
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 2),
-                    child: PlayingCardWidget(
+                    child: buildHandCard(
                       card: card,
-                      selectable: isMyTurn,
-                      onTap: () => controller.playCard(card),
-                      width: 48,
+                      dimmed: isMyTurn && !legal.contains(card),
+                      selectable: isMyTurn && legal.contains(card),
+                      reason: isMyTurn && !legal.contains(card) && trick != null
+                          ? illegalPlayReason(trick, cards, card)
+                          : null,
+                      onTap: () {
+                        playTapSound(context.read<AppSettings>());
+                        controller.playCard(card);
+                      },
+                      width: 48 * cardScale,
                     ),
                   ),
               ],
@@ -514,7 +691,8 @@ class _OnlineHandSummaryOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final result = controller.snapshot!.lastHandResult!;
-    final myTeamKey = controller.mySeat!.team == Team.northSouth ? 'northSouth' : 'eastWest';
+    final myTeamKey =
+        controller.mySeat!.team == Team.northSouth ? 'northSouth' : 'eastWest';
     final theirTeamKey = myTeamKey == 'northSouth' ? 'eastWest' : 'northSouth';
     final contract = result['contract'] as Map<String, dynamic>;
     final trickPoints = (result['trickPoints'] as Map<String, dynamic>);
@@ -522,7 +700,8 @@ class _OnlineHandSummaryOverlay extends StatelessWidget {
     final rounded = (result['rounded'] as Map<String, dynamic>);
     final declarations = result['declarations'] as Map<String, dynamic>;
     final contractMade = result['contractMade'] as bool;
-    final iAmReady = controller.snapshot!.readyForNextHand.contains(controller.mySeat);
+    final iAmReady =
+        controller.snapshot!.readyForNextHand.contains(controller.mySeat);
 
     return Container(
       color: Colors.black54,
@@ -536,19 +715,23 @@ class _OnlineHandSummaryOverlay extends StatelessWidget {
             children: [
               Text(
                 contractMade ? 'Το συμβόλαιο βγήκε' : 'Μέσα!',
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                style:
+                    const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 4),
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('${contract['isCapot'] == true ? 'Καπότο' : contract['value']} ',
+                  Text(
+                      '${contract['isCapot'] == true ? 'Καπότο' : contract['value']} ',
                       style: const TextStyle(fontSize: 14)),
-                  SuitIcon(Suit.values.byName(contract['trumpSuit'] as String), size: 16),
+                  SuitIcon(Suit.values.byName(contract['trumpSuit'] as String),
+                      size: 16),
                 ],
               ),
               const Divider(height: 24),
-              _row('Πόντοι φύλλων', '${trickPoints[myTeamKey]} – ${trickPoints[theirTeamKey]}'),
+              _row('Πόντοι φύλλων',
+                  '${trickPoints[myTeamKey]} – ${trickPoints[theirTeamKey]}'),
               if (declarations['winningTeam'] != null)
                 _row(
                   'Δηλώσεις',
@@ -557,29 +740,34 @@ class _OnlineHandSummaryOverlay extends StatelessWidget {
                       : '0 – ${declarations['winningTeamPoints']}',
                 ),
               for (final entry
-                  in (declarations['forfeitedPerSeat'] as Map<String, dynamic>).entries)
+                  in (declarations['forfeitedPerSeat'] as Map<String, dynamic>)
+                      .entries)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 2),
                   child: Text(
                     '${seatLabelRelativeTo(Seat.values.byName(entry.key), controller.mySeat!)} '
                     'ξέχασε να αποκαλύψει: '
                     '${declarationLabelFromJson(entry.value as Map<String, dynamic>)} (χαμένο)',
-                    style: const TextStyle(fontSize: 11, color: Colors.redAccent),
+                    style:
+                        const TextStyle(fontSize: 11, color: Colors.redAccent),
                   ),
                 ),
-              _row('Σύνολο', '${rawTotals[myTeamKey]} – ${rawTotals[theirTeamKey]}'),
+              _row('Σύνολο',
+                  '${rawTotals[myTeamKey]} – ${rawTotals[theirTeamKey]}'),
               const Divider(height: 24),
               _row(
                 'Βαθμολογία γύρου',
                 '${rounded[myTeamKey == 'northSouth' ? 'northSouth' : 'eastWest']}'
-                ' – '
-                '${rounded[theirTeamKey == 'northSouth' ? 'northSouth' : 'eastWest']}',
+                    ' – '
+                    '${rounded[theirTeamKey == 'northSouth' ? 'northSouth' : 'eastWest']}',
                 bold: true,
               ),
               const SizedBox(height: 16),
               FilledButton(
                 onPressed: iAmReady ? null : controller.continueAfterHand,
-                child: Text(iAmReady ? 'Περιμένουμε τους άλλους...' : 'Επόμενη μοιρασιά'),
+                child: Text(iAmReady
+                    ? 'Περιμένουμε τους άλλους...'
+                    : 'Επόμενη μοιρασιά'),
               ),
             ],
           ),
@@ -589,7 +777,8 @@ class _OnlineHandSummaryOverlay extends StatelessWidget {
   }
 
   Widget _row(String label, String value, {bool bold = false}) {
-    final style = TextStyle(fontWeight: bold ? FontWeight.bold : FontWeight.normal);
+    final style =
+        TextStyle(fontWeight: bold ? FontWeight.bold : FontWeight.normal);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
@@ -607,7 +796,8 @@ class _OnlineMatchOverOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final snapshot = controller.snapshot!;
-    final myTeamKey = controller.mySeat!.team == Team.northSouth ? 'northSouth' : 'eastWest';
+    final myTeamKey =
+        controller.mySeat!.team == Team.northSouth ? 'northSouth' : 'eastWest';
     final theirTeamKey = myTeamKey == 'northSouth' ? 'eastWest' : 'northSouth';
     final weWon = snapshot.winnerTeam == myTeamKey;
 
@@ -618,9 +808,13 @@ class _OnlineMatchOverOverlay extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(weWon ? 'Κερδίσατε!' : 'Χάσατε',
-              style: const TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.bold)),
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 30,
+                  fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
-          Text('${snapshot.totals[myTeamKey]} – ${snapshot.totals[theirTeamKey]}',
+          Text(
+              '${snapshot.totals[myTeamKey]} – ${snapshot.totals[theirTeamKey]}',
               style: const TextStyle(color: Colors.white70, fontSize: 20)),
           const SizedBox(height: 24),
           FilledButton(
@@ -628,6 +822,76 @@ class _OnlineMatchOverOverlay extends StatelessWidget {
             child: const Text('Πίσω στο μενού'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Shown when the connection to the server/host drops mid-match. The room
+/// itself keeps going (a bot plays this seat until it reconnects — see
+/// [PilottaRoom.setConnected]); this overlay offers to open a fresh
+/// connection and rejoin with the same name, which reclaims the same seat
+/// (see [PilottaRoom.join]), or to just leave.
+class _DisconnectOverlay extends StatelessWidget {
+  final RoomClientController controller;
+  const _DisconnectOverlay({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    final current = controller;
+    final canReconnect = current is OnlineGameController &&
+        current.roomCode != null &&
+        current.playerName != null;
+
+    return Container(
+      color: Colors.black87,
+      alignment: Alignment.center,
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.wifi_off, color: Colors.orangeAccent, size: 48),
+            const SizedBox(height: 12),
+            const Text('Έχασες τη σύνδεση',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            const Text(
+              'Το παιχνίδι συνεχίζει στο δωμάτιο — ένα bot παίζει προσωρινά τη θέση σου.',
+              style: TextStyle(color: Colors.white70, fontSize: 13),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            if (canReconnect)
+              FilledButton.icon(
+                onPressed: () {
+                  final fresh =
+                      OnlineGameController(serverUri: current.serverUri);
+                  fresh.joinRoom(
+                      roomCode: current.roomCode!,
+                      playerName: current.playerName!);
+                  Navigator.of(context).pushReplacement(MaterialPageRoute(
+                    builder: (_) =>
+                        ChangeNotifierProvider<RoomClientController>.value(
+                      value: fresh,
+                      child: const NetworkedGameScreen(),
+                    ),
+                  ));
+                },
+                icon: const Icon(Icons.refresh),
+                label: const Text('Προσπάθεια επανασύνδεσης'),
+              ),
+            const SizedBox(height: 8),
+            OutlinedButton(
+              onPressed: () => Navigator.of(context).popUntil((r) => r.isFirst),
+              style: OutlinedButton.styleFrom(foregroundColor: Colors.white),
+              child: const Text('Πίσω στο μενού'),
+            ),
+          ],
+        ),
       ),
     );
   }

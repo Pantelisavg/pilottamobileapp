@@ -197,6 +197,7 @@ class RoomSnapshotMessage extends ServerMessage {
   final RoomPhase phase;
   final Map<Seat, SeatInfo> seats;
   final int targetScore;
+  final bool mustOvertrumpAllSuits;
   final Map<String, int> totals; // "northSouth" / "eastWest" -> points
 
   final Seat? dealer;
@@ -208,6 +209,15 @@ class RoomSnapshotMessage extends ServerMessage {
   final Map<Seat, int> handSizes;
   final List<Map<String, dynamic>>? currentTrick; // [{seat, card}]
   final Seat? trickLeader;
+
+  /// The most recently completed trick (before the current one), for a
+  /// "peek last trick" affordance — null before any trick has finished.
+  final List<Map<String, dynamic>>? lastCompletedTrick; // [{seat, card}]
+  final Seat? lastCompletedTrickWinner;
+
+  /// Every hand played so far this match, oldest first, for a paper-style
+  /// scoreboard. Each entry is a `handResultToJson` map.
+  final List<Map<String, dynamic>> matchHistory;
 
   /// Every seat's progress through the declaration announce/reveal flow —
   /// values are [DeclarationAnnounceState] names. Always public: announcing
@@ -237,6 +247,7 @@ class RoomSnapshotMessage extends ServerMessage {
     required this.phase,
     required this.seats,
     required this.targetScore,
+    this.mustOvertrumpAllSuits = false,
     required this.totals,
     this.dealer,
     this.auctionCalls,
@@ -246,6 +257,9 @@ class RoomSnapshotMessage extends ServerMessage {
     this.handSizes = const {},
     this.currentTrick,
     this.trickLeader,
+    this.lastCompletedTrick,
+    this.lastCompletedTrickWinner,
+    this.matchHistory = const [],
     this.declarationStates = const {},
     this.revealedDeclarations = const {},
     this.yourBestDeclaration,
@@ -265,6 +279,7 @@ class RoomSnapshotMessage extends ServerMessage {
         'phase': phase.name,
         'seats': {for (final e in seats.entries) e.key.name: e.value.toJson()},
         'targetScore': targetScore,
+        'mustOvertrumpAllSuits': mustOvertrumpAllSuits,
         'totals': totals,
         'dealer': dealer?.name,
         'auctionCalls': auctionCalls,
@@ -274,6 +289,9 @@ class RoomSnapshotMessage extends ServerMessage {
         'handSizes': {for (final e in handSizes.entries) e.key.name: e.value},
         'currentTrick': currentTrick,
         'trickLeader': trickLeader?.name,
+        'lastCompletedTrick': lastCompletedTrick,
+        'lastCompletedTrickWinner': lastCompletedTrickWinner?.name,
+        'matchHistory': matchHistory,
         'declarationStates': {for (final e in declarationStates.entries) e.key.name: e.value},
         'revealedDeclarations': {
           for (final e in revealedDeclarations.entries) e.key.name: e.value,
@@ -297,6 +315,7 @@ class RoomSnapshotMessage extends ServerMessage {
           Seat.values.byName(entry.key): SeatInfo.fromJson(entry.value as Map<String, dynamic>),
       },
       targetScore: json['targetScore'] as int,
+      mustOvertrumpAllSuits: json['mustOvertrumpAllSuits'] as bool? ?? false,
       totals: (json['totals'] as Map<String, dynamic>).cast<String, int>(),
       dealer: (json['dealer'] as String?) == null ? null : Seat.values.byName(json['dealer'] as String),
       auctionCalls: (json['auctionCalls'] as List<dynamic>?)?.cast<Map<String, dynamic>>(),
@@ -311,6 +330,12 @@ class RoomSnapshotMessage extends ServerMessage {
       currentTrick: (json['currentTrick'] as List<dynamic>?)?.cast<Map<String, dynamic>>(),
       trickLeader:
           (json['trickLeader'] as String?) == null ? null : Seat.values.byName(json['trickLeader'] as String),
+      lastCompletedTrick: (json['lastCompletedTrick'] as List<dynamic>?)?.cast<Map<String, dynamic>>(),
+      lastCompletedTrickWinner: (json['lastCompletedTrickWinner'] as String?) == null
+          ? null
+          : Seat.values.byName(json['lastCompletedTrickWinner'] as String),
+      matchHistory: (json['matchHistory'] as List<dynamic>? ?? const [])
+          .cast<Map<String, dynamic>>(),
       declarationStates: {
         for (final entry in (json['declarationStates'] as Map<String, dynamic>? ?? const {}).entries)
           Seat.values.byName(entry.key): entry.value as String,

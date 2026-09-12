@@ -12,6 +12,7 @@ import '../widgets/felt_panel.dart';
 import 'bluetooth_lobby_screen.dart';
 import 'local_game_screen.dart';
 import 'online_lobby_screen.dart';
+import 'settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -29,55 +30,70 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: Colors.transparent,
       body: FeltBackground(
         child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: PilottaSpacing.lg, vertical: PilottaSpacing.xl),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 360),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const _Wordmark(),
-                    const SizedBox(height: PilottaSpacing.xxl),
-                    _TargetScoreSelector(
-                      value: _targetScore,
-                      onChanged: (v) => setState(() => _targetScore = v),
+          child: Stack(
+            children: [
+              Center(
+                child: SingleChildScrollView(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: PilottaSpacing.lg, vertical: PilottaSpacing.xl),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 360),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const _Wordmark(),
+                        const SizedBox(height: PilottaSpacing.xxl),
+                        _TargetScoreSelector(
+                          value: _targetScore,
+                          onChanged: (v) => setState(() => _targetScore = v),
+                        ),
+                        const SizedBox(height: PilottaSpacing.xl),
+                        _ModeMenuTile(
+                          mode: GameModeAccent.localBots,
+                          title: 'Παιχνίδι με Bots',
+                          subtitle: 'Τοπικά, χωρίς σύνδεση — παίζεις αμέσως',
+                          onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                            builder: (_) => LocalGameScreen(targetScore: _targetScore),
+                          )),
+                        ),
+                        const SizedBox(height: PilottaSpacing.sm),
+                        _ModeMenuTile(
+                          mode: GameModeAccent.online,
+                          title: 'Online Παιχνίδι',
+                          subtitle: 'Δωμάτιο με κωδικό, παίκτες από παντού',
+                          onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                            builder: (_) => const OnlineLobbyScreen(),
+                          )),
+                        ),
+                        // Nearby Connections (the Bluetooth/local-network
+                        // backend) is an Android-only plugin.
+                        if (!kIsWeb && Platform.isAndroid) ...[
+                          const SizedBox(height: PilottaSpacing.sm),
+                          _ModeMenuTile(
+                            mode: GameModeAccent.bluetooth,
+                            title: 'Bluetooth / Τοπικό δίκτυο',
+                            subtitle: 'Χωρίς internet — παίκτες κοντά σου',
+                            onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                              builder: (_) => const BluetoothLobbyScreen(),
+                            )),
+                          ),
+                        ],
+                      ],
                     ),
-                    const SizedBox(height: PilottaSpacing.xl),
-                    _ModeMenuTile(
-                      mode: GameModeAccent.localBots,
-                      title: 'Παιχνίδι με Bots',
-                      subtitle: 'Τοπικά, χωρίς σύνδεση — παίζεις αμέσως',
-                      onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                        builder: (_) => LocalGameScreen(targetScore: _targetScore),
-                      )),
-                    ),
-                    const SizedBox(height: PilottaSpacing.sm),
-                    _ModeMenuTile(
-                      mode: GameModeAccent.online,
-                      title: 'Online Παιχνίδι',
-                      subtitle: 'Δωμάτιο με κωδικό, παίκτες από παντού',
-                      onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                        builder: (_) => const OnlineLobbyScreen(),
-                      )),
-                    ),
-                    // Nearby Connections (the Bluetooth/local-network
-                    // backend) is an Android-only plugin.
-                    if (!kIsWeb && Platform.isAndroid) ...[
-                      const SizedBox(height: PilottaSpacing.sm),
-                      _ModeMenuTile(
-                        mode: GameModeAccent.bluetooth,
-                        title: 'Bluetooth / Τοπικό δίκτυο',
-                        subtitle: 'Χωρίς internet — παίκτες κοντά σου',
-                        onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                          builder: (_) => const BluetoothLobbyScreen(),
-                        )),
-                      ),
-                    ],
-                  ],
+                  ),
                 ),
               ),
-            ),
+              Positioned(
+                top: 0,
+                right: 0,
+                child: IconButton(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                  ),
+                  icon: const Icon(Icons.settings_outlined, color: PilottaColors.ink200),
+                ),
+              ),
+            ],
           ),
         ),
       ),

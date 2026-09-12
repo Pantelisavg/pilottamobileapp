@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../controllers/online_game_controller.dart';
 import '../controllers/room_client_controller.dart';
+import '../settings/app_settings.dart';
 import 'networked_game_screen.dart';
 
 /// Lets the player point at a running Pilotta server, then either create a
@@ -19,6 +20,13 @@ class _OnlineLobbyScreenState extends State<OnlineLobbyScreen> {
   final _nameController = TextEditingController(text: 'Παίκτης');
   final _roomCodeController = TextEditingController();
   int _targetScore = 101;
+  bool _mustOvertrumpAllSuits = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _mustOvertrumpAllSuits = context.read<AppSettings>().mustOvertrumpAllSuits;
+  }
 
   @override
   void dispose() {
@@ -39,7 +47,11 @@ class _OnlineLobbyScreenState extends State<OnlineLobbyScreen> {
     final uri = _parseServerUri();
     if (uri == null) return _showBadServerError();
     final controller = OnlineGameController(serverUri: uri);
-    controller.createRoom(playerName: _nameController.text.trim(), targetScore: _targetScore);
+    controller.createRoom(
+      playerName: _nameController.text.trim(),
+      targetScore: _targetScore,
+      mustOvertrumpAllSuits: _mustOvertrumpAllSuits,
+    );
     Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => ChangeNotifierProvider<RoomClientController>.value(value: controller, child: const NetworkedGameScreen()),
     ));
@@ -126,7 +138,15 @@ class _OnlineLobbyScreenState extends State<OnlineLobbyScreen> {
                         selectedBackgroundColor: Colors.amber,
                       ),
                     ),
-                    const SizedBox(height: 14),
+                    CheckboxListTile(
+                      contentPadding: EdgeInsets.zero,
+                      controlAffinity: ListTileControlAffinity.leading,
+                      value: _mustOvertrumpAllSuits,
+                      onChanged: (v) => setState(() => _mustOvertrumpAllSuits = v ?? false),
+                      title: const Text('Υποχρεωτικό ανέβασμα σε όλα τα χρώματα',
+                          style: TextStyle(color: Colors.white, fontSize: 13)),
+                    ),
+                    const SizedBox(height: 4),
                     FilledButton.icon(
                       onPressed: _createRoom,
                       icon: const Icon(Icons.add),

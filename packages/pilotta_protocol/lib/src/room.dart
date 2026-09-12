@@ -373,6 +373,7 @@ class PilottaRoom {
       phase: phase,
       seats: Map.of(seats),
       targetScore: targetScore,
+      mustOvertrumpAllSuits: mustOvertrumpAllSuits,
       totals: {
         'northSouth': scoreboard.totals[Team.northSouth]!,
         'eastWest': scoreboard.totals[Team.eastWest]!,
@@ -391,6 +392,14 @@ class PilottaRoom {
           .map((e) => {'seat': e.seat.name, 'card': cardToJson(e.card)})
           .toList(),
       trickLeader: h?.currentTrick.leader,
+      lastCompletedTrick: h == null || h.completedTricks.isEmpty
+          ? null
+          : h.completedTricks.last.played
+              .map((e) => {'seat': e.seat.name, 'card': cardToJson(e.card)})
+              .toList(),
+      lastCompletedTrickWinner:
+          h == null || h.completedTricks.isEmpty ? null : h.completedTricks.last.winner,
+      matchHistory: scoreboard.history.map(handResultToJson).toList(),
       declarationStates: h == null
           ? const {}
           : {for (final seat in Seat.values) seat: h.declarationStateOf(seat).name},

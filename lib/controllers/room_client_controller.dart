@@ -22,6 +22,12 @@ abstract class RoomClientController extends ChangeNotifier {
   RoomSnapshotMessage? snapshot;
   String? lastError;
 
+  /// The name this player joined/created the room with — kept around
+  /// purely so a UI can offer to reconnect with the same identity after a
+  /// dropped connection (rejoining with the same name reclaims your seat,
+  /// see [PilottaRoom.join]).
+  String? playerName;
+
   /// Sends [message] to whoever is authoritative (server or host device).
   @protected
   void sendMessage(ClientMessage message);
@@ -49,15 +55,19 @@ abstract class RoomClientController extends ChangeNotifier {
     required String playerName,
     required int targetScore,
     bool mustOvertrumpAllSuits = false,
-  }) =>
-      sendMessage(CreateRoomMessage(
-        playerName: playerName,
-        targetScore: targetScore,
-        mustOvertrumpAllSuits: mustOvertrumpAllSuits,
-      ));
+  }) {
+    this.playerName = playerName;
+    sendMessage(CreateRoomMessage(
+      playerName: playerName,
+      targetScore: targetScore,
+      mustOvertrumpAllSuits: mustOvertrumpAllSuits,
+    ));
+  }
 
-  void joinRoom({required String roomCode, required String playerName}) =>
-      sendMessage(JoinRoomMessage(roomCode: roomCode, playerName: playerName));
+  void joinRoom({required String roomCode, required String playerName}) {
+    this.playerName = playerName;
+    sendMessage(JoinRoomMessage(roomCode: roomCode, playerName: playerName));
+  }
 
   void start() => sendMessage(const StartMessage());
 
@@ -99,4 +109,37 @@ abstract class RoomClientController extends ChangeNotifier {
 
   bool get isMyTurnToPlay =>
       snapshot?.phase == RoomPhase.playing && snapshot?.seatToAct == mySeat;
+
+  /// Reconstructs the current trick as a real [Trick] from the snapshot's
+  /// public state (leader, trump suit, cards played so far, house-rule
+  /// flag). Legality only ever depends on this plus the viewer's own hand
+  /// — never on other players' hidden cards — so this is exact, not a
+  /// heuristic guess at what the server would accept.
+  Trick? get currentTrick {
+    final snap = snapshot;
+    final contract = snap?.contract;
+    final leader = snap?.trickLeader;
+    if (snap == null || contract == null || leader == null) return null;
+    final trick = Trick(
+      leader: leader,
+      trumpSuit: Suit.values.byName(contract['trumpSuit'] as String),
+      mustOvertrumpAllSuits: snap.mustOvertrumpAllSuits,
+    );
+    for (final entry in snap.currentTrick ?? const <Map<String, dynamic>>[]) {
+      trick.play(
+        Seat.values.byName(entry['seat'] as String),
+        cardFromJson(entry['card'] as Map<String, dynamic>),
+      );
+    }
+    return trick;
+  }
+
+  /// The cards [mySeat] may legally play right now, computed client-side
+  /// from [currentTrick] + the viewer's own hand (see [currentTrick]).
+  List<PlayingCard> get legalPlaysForMe {
+    final trick = currentTrick;
+    final snap = snapshot;
+    if (trick == null || snap == null) return const [];
+    return trick.legalPlays(snap.yourHand);
+  }
 }

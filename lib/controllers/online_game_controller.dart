@@ -11,10 +11,11 @@ import 'room_client_controller.dart';
 /// only knows how to get [ClientMessage]/[ServerMessage] JSON on and off a
 /// WebSocket.
 class OnlineGameController extends RoomClientController {
+  final Uri serverUri;
   final WebSocketChannel _channel;
   StreamSubscription<dynamic>? _sub;
 
-  OnlineGameController({required Uri serverUri})
+  OnlineGameController({required this.serverUri})
       : _channel = WebSocketChannel.connect(serverUri) {
     _sub = _channel.stream.listen(
       _onData,

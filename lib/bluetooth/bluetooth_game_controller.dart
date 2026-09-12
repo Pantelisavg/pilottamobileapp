@@ -14,7 +14,7 @@ import 'nearby_transport.dart';
 /// WebSocket, which is why all the actual game-flow handling lives in the
 /// shared [RoomClientController] base class.
 class BluetoothGameController extends RoomClientController {
-  final String playerName;
+  final String _playerName;
   final NearbyTransport _transport = NearbyTransport();
 
   bool discovering = false;
@@ -23,7 +23,9 @@ class BluetoothGameController extends RoomClientController {
   /// endpointId -> advertised host name, for the "pick a table" list.
   final Map<String, String> discoveredHosts = {};
 
-  BluetoothGameController({required this.playerName});
+  BluetoothGameController({required String playerName}) : _playerName = playerName {
+    this.playerName = playerName;
+  }
 
   Future<void> startDiscovery() async {
     final granted = await _transport.ensurePermissions();
@@ -34,7 +36,7 @@ class BluetoothGameController extends RoomClientController {
     }
     try {
       discovering = await _transport.startDiscovery(
-        userName: playerName,
+        userName: _playerName,
         onHostFound: (endpointId, hostName) {
           discoveredHosts[endpointId] = hostName;
           notifyListeners();
@@ -66,13 +68,13 @@ class BluetoothGameController extends RoomClientController {
 
     try {
       await _transport.requestConnection(
-        userName: playerName,
+        userName: _playerName,
         hostEndpointId: endpointId,
         onMessage: (fromId, raw) => _onMessage(raw),
         onConnectionResult: (id, connectionStatus) {
           if (connectionStatus == Status.CONNECTED) {
             status = ConnectionStatus.connected;
-            sendMessage(JoinRoomMessage(roomCode: '', playerName: playerName));
+            sendMessage(JoinRoomMessage(roomCode: '', playerName: _playerName));
           } else {
             status = ConnectionStatus.disconnected;
             lastError = 'Η σύνδεση απορρίφθηκε.';

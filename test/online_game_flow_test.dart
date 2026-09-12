@@ -5,11 +5,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pilotta/controllers/online_game_controller.dart';
 import 'package:pilotta/controllers/room_client_controller.dart';
 import 'package:pilotta/screens/networked_game_screen.dart';
+import 'package:pilotta/settings/app_settings.dart';
 import 'package:pilotta_engine/pilotta_engine.dart';
 import 'package:pilotta_protocol/pilotta_protocol.dart';
 import 'package:pilotta_server/app.dart';
 import 'package:pilotta_server/room_registry.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
 
 /// End-to-end check that the real app widgets, talking to a real running
@@ -22,22 +24,34 @@ import 'package:shelf/shelf_io.dart' as shelf_io;
 /// default widget-test zone fakes the clock and never lets real dart:io
 /// callbacks complete.
 void main() {
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
+
   testWidgets('creating a room, starting it, and seeing the dealt hand renders end to end',
       (tester) async {
     late HttpServer server;
     late OnlineGameController controller;
+    late AppSettings settings;
 
     await tester.runAsync(() async {
       final registry = RoomRegistry();
       server = await shelf_io.serve(buildHandler(registry), InternetAddress.loopbackIPv4, 0);
       final wsUri = Uri.parse('ws://${server.address.host}:${server.port}/ws');
       controller = OnlineGameController(serverUri: wsUri);
+      settings = await AppSettings.load();
     });
     addTearDown(() => controller.dispose());
     addTearDown(() => server.close(force: true));
 
     await tester.pumpWidget(MaterialApp(
-      home: ChangeNotifierProvider<RoomClientController>.value(value: controller, child: const NetworkedGameScreen()),
+      home: MultiProvider(
+        providers: [
+          ChangeNotifierProvider<RoomClientController>.value(value: controller),
+          ChangeNotifierProvider<AppSettings>.value(value: settings),
+        ],
+        child: const NetworkedGameScreen(),
+      ),
     ));
     await tester.pump();
 

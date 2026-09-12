@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../bluetooth/bluetooth_game_controller.dart';
 import '../bluetooth/bluetooth_host_session.dart';
 import '../controllers/room_client_controller.dart';
+import '../settings/app_settings.dart';
 import 'networked_game_screen.dart';
 
 /// Entry point for offline, no-internet multiplayer over Bluetooth/local
@@ -19,6 +20,13 @@ class BluetoothLobbyScreen extends StatefulWidget {
 class _BluetoothLobbyScreenState extends State<BluetoothLobbyScreen> {
   final _nameController = TextEditingController(text: 'Παίκτης');
   int _targetScore = 101;
+  bool _mustOvertrumpAllSuits = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _mustOvertrumpAllSuits = context.read<AppSettings>().mustOvertrumpAllSuits;
+  }
 
   @override
   void dispose() {
@@ -28,7 +36,11 @@ class _BluetoothLobbyScreenState extends State<BluetoothLobbyScreen> {
 
   void _hostGame() {
     final name = _nameController.text.trim().isEmpty ? 'Οικοδεσπότης' : _nameController.text.trim();
-    final session = BluetoothHostSession(targetScore: _targetScore, hostName: name);
+    final session = BluetoothHostSession(
+      targetScore: _targetScore,
+      hostName: name,
+      mustOvertrumpAllSuits: _mustOvertrumpAllSuits,
+    );
     session.startAdvertising();
     Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => ChangeNotifierProvider<RoomClientController>.value(
@@ -108,7 +120,15 @@ class _BluetoothLobbyScreenState extends State<BluetoothLobbyScreen> {
                         selectedBackgroundColor: Colors.amber,
                       ),
                     ),
-                    const SizedBox(height: 14),
+                    CheckboxListTile(
+                      contentPadding: EdgeInsets.zero,
+                      controlAffinity: ListTileControlAffinity.leading,
+                      value: _mustOvertrumpAllSuits,
+                      onChanged: (v) => setState(() => _mustOvertrumpAllSuits = v ?? false),
+                      title: const Text('Υποχρεωτικό ανέβασμα σε όλα τα χρώματα',
+                          style: TextStyle(color: Colors.white, fontSize: 13)),
+                    ),
+                    const SizedBox(height: 4),
                     FilledButton.icon(
                       onPressed: _hostGame,
                       icon: const Icon(Icons.wifi_tethering),

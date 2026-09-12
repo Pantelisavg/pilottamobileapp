@@ -2,11 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pilotta/main.dart';
 import 'package:pilotta/screens/local_game_screen.dart';
+import 'package:pilotta/settings/app_settings.dart';
 import 'package:pilotta/widgets/playing_card_widget.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
+
   testWidgets('home screen offers a local game against bots', (tester) async {
-    await tester.pumpWidget(const PilottaApp());
+    final settings = await AppSettings.load();
+    await tester.pumpWidget(PilottaApp(settings: settings));
 
     expect(find.text('ΠΙΛΟΤΤΑ'), findsOneWidget);
     expect(find.text('Παιχνίδι με Bots'), findsOneWidget);
@@ -14,7 +21,8 @@ void main() {
   });
 
   testWidgets('starting a local game deals 8 cards to the human seat', (tester) async {
-    await tester.pumpWidget(const PilottaApp());
+    final settings = await AppSettings.load();
+    await tester.pumpWidget(PilottaApp(settings: settings));
 
     await tester.tap(find.text('Παιχνίδι με Bots'));
     await tester.pump();
