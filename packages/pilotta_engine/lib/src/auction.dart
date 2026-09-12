@@ -1,9 +1,13 @@
 import 'seat.dart';
 import 'card.dart';
 
-/// The lowest allowed suit-bid value, and the increment between allowed
-/// values (80, 90, 100, ... ).
+/// The lowest and highest allowed suit-bid values, and the increment
+/// between allowed values (80, 90, 100, ... 800). Colloquially these are
+/// spoken/displayed in shorthand tens (8 to 80) — the same convention the
+/// scoreboard uses for its rounded totals — but the values here, like
+/// everywhere else in the engine, are always the actual point values.
 const int kMinBidValue = 80;
+const int kMaxBidValue = 800;
 const int kBidIncrement = 10;
 
 /// The fixed value of a Capot call/contract.
@@ -182,6 +186,9 @@ class Auction {
       case SuitBidCall(:final value):
         if (value < kMinBidValue) {
           throw IllegalCallException('Bid must be at least $kMinBidValue.');
+        }
+        if (value > kMaxBidValue) {
+          throw IllegalCallException('Bid cannot exceed $kMaxBidValue.');
         }
         if ((value - kMinBidValue) % kBidIncrement != 0) {
           throw IllegalCallException(

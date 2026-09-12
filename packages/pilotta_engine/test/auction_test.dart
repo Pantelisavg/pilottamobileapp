@@ -48,6 +48,20 @@ void main() {
       );
     });
 
+    test('bids cannot exceed the maximum of 800 (shorthand 80)', () {
+      final auction = Auction(Seat.south);
+      expect(kMaxBidValue, 800);
+      expect(
+        () => auction.apply(SuitBidCall(Seat.south, Suit.hearts, 810)),
+        throwsA(isA<IllegalCallException>()),
+      );
+      // The maximum itself is a perfectly legal bid.
+      expect(
+        () => auction.apply(SuitBidCall(Seat.south, Suit.hearts, kMaxBidValue)),
+        returnsNormally,
+      );
+    });
+
     test('calling out of turn is rejected', () {
       final auction = Auction(Seat.south);
       expect(

@@ -46,7 +46,8 @@ class _BiddingPanelState extends State<BiddingPanel> {
   Widget build(BuildContext context) {
     final minValue = _minimumValue();
     final value = _value < minValue ? minValue : _value;
-    final canBidValue = value <= 240;
+    final canBidValue = value <= kMaxBidValue;
+    final canIncrement = value + kBidIncrement <= kMaxBidValue;
 
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
@@ -70,12 +71,15 @@ class _BiddingPanelState extends State<BiddingPanel> {
               ),
               SizedBox(
                 width: 88,
-                child: Text('$value',
+                // Shown in the usual colloquial shorthand (8 to 80, for an
+                // actual 80-800) — the same tens convention the scoreboard
+                // uses for its running totals.
+                child: Text('${value ~/ 10}',
                     textAlign: TextAlign.center,
                     style: const TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.bold)),
               ),
               IconButton(
-                onPressed: canBidValue ? () => setState(() => _value = value + kBidIncrement) : null,
+                onPressed: canIncrement ? () => setState(() => _value = value + kBidIncrement) : null,
                 icon: const Icon(Icons.add_circle_outline),
                 color: Colors.white,
               ),
@@ -110,7 +114,7 @@ class _BiddingPanelState extends State<BiddingPanel> {
                     canBidValue ? () => widget.onCall(SuitBidCall(widget.seat, _suit, value)) : null,
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
-                  children: [Text('Δήλωση $value '), SuitIcon(_suit, size: 16)],
+                  children: [Text('Δήλωση ${value ~/ 10} '), SuitIcon(_suit, size: 16)],
                 ),
               ),
               FilledButton.tonal(
