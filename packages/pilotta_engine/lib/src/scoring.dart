@@ -74,8 +74,13 @@ class HandSettlement {
 ///   trick points and declarations, plus the contract value. The defence
 ///   keeps whatever it earned normally.
 /// - Plain (undoubled) contract, failed: the bidding team scores 0, and
-///   the entire hand's points (both teams' trick points and declarations)
-///   go to the defence instead.
+///   the defence gets the *entire* hand's points (both teams' trick points
+///   and declarations) *plus* the contract value itself — per the rules
+///   spec: "bid + all 162 trick points + all declarations" go to the
+///   defenders. This also produces the correct "reverse capot" result
+///   automatically: when the defence sweeps all 8 tricks against a failed
+///   attacking bid, [opponentPoints] already reflects the capot override
+///   applied by the caller before settlement.
 /// - Doubled/redoubled ("κλειστό"/"ξανακλειστό"), either outcome: closing
 ///   raises the stakes for both sides at once — the side proven right by
 ///   the outcome takes the *entire* point pool from the hand (both teams'
@@ -116,14 +121,11 @@ HandSettlement settleContract({
     }, true);
   }
 
-  if (doubled) {
-    return HandSettlement({
-      biddingTeam: 0,
-      opponentTeam: contractValue * multiplierFactor + pool,
-    }, false);
-  }
+  // Failed contract: the defence sweeps the whole pool plus the contract
+  // value, whether or not it was doubled — doubling only scales that
+  // contract value by [multiplierFactor].
   return HandSettlement({
     biddingTeam: 0,
-    opponentTeam: pool,
+    opponentTeam: contractValue * multiplierFactor + pool,
   }, false);
 }

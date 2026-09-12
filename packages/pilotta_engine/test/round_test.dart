@@ -136,7 +136,10 @@ void main() {
 
       expect(result.contractMade, isFalse);
       expect(result.rawTotals[Team.eastWest], 0);
-      expect(result.rawTotals[Team.northSouth], 250 + declarationsAndBelote);
+      // Failed contract: the defence gets the bid (kCapotValue) plus the
+      // whole pool (trick points + declarations), per the rules spec.
+      expect(result.rawTotals[Team.northSouth],
+          kCapotValue + 250 + declarationsAndBelote);
     });
   });
 

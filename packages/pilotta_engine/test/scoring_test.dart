@@ -79,7 +79,9 @@ void main() {
       expect(settlement.rawTotals[Team.eastWest], 62);
     });
 
-    test('plain contract failed: all points go to the opponents', () {
+    test('plain contract failed: defence gets the bid plus the whole pool '
+        '(bid + all 162 trick points + all declarations), per the rules '
+        'spec — not just the pool', () {
       final settlement = settleContract(
         biddingTeam: Team.northSouth,
         biddingTeamPoints: 60,
@@ -88,7 +90,7 @@ void main() {
       );
       expect(settlement.contractMade, isFalse);
       expect(settlement.rawTotals[Team.northSouth], 0);
-      expect(settlement.rawTotals[Team.eastWest], 60 + 102);
+      expect(settlement.rawTotals[Team.eastWest], 80 + 60 + 102);
     });
 
     test('doubled and made: pilotta.io worked example (80 bid, 97 vs 65 trick '
@@ -121,8 +123,8 @@ void main() {
     });
 
     test('doubled and failed: the defence sweeps the pool plus the doubled '
-        'contract value (inferred by symmetry with the confirmed '
-        'doubled-made case — not yet backed by its own worked example)', () {
+        'contract value, per the rules spec\'s "bid + all 162 trick points '
+        '+ all declarations" formula scaled by the doubling multiplier', () {
       final settlement = settleContract(
         biddingTeam: Team.northSouth,
         biddingTeamPoints: 60,
@@ -145,6 +147,21 @@ void main() {
       );
       expect(settlement.contractMade, isFalse);
       expect(settlement.rawTotals[Team.northSouth], 0);
+    });
+
+    test('reverse capot: bidding team bids capot but the defence sweeps all '
+        '8 tricks instead — the defence gets the bid (250) plus the whole '
+        'pool, same failed-contract formula as any other failed bid', () {
+      final settlement = settleContract(
+        biddingTeam: Team.northSouth,
+        biddingTeamPoints: 0,
+        opponentPoints: kTotalTrickPoints, // defence swept everything
+        contractValue: kCapotValue,
+        madeOverride: false,
+      );
+      expect(settlement.contractMade, isFalse);
+      expect(settlement.rawTotals[Team.northSouth], 0);
+      expect(settlement.rawTotals[Team.eastWest], kCapotValue + kTotalTrickPoints);
     });
   });
 }
