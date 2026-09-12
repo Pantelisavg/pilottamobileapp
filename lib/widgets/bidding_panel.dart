@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:pilotta_engine/pilotta_engine.dart';
 
 import 'playing_card_widget.dart';
+import 'suit_icon.dart';
 
 /// The human player's bidding controls: pick a value + suit, call capot,
 /// double/redouble, or pass.
@@ -90,12 +91,10 @@ class _BiddingPanelState extends State<BiddingPanel> {
                   onSelected: (_) => setState(() => _suit = suit),
                   backgroundColor: Colors.white10,
                   selectedColor: Colors.amber,
-                  label: Text(
-                    suitSymbol(suit),
-                    style: TextStyle(
-                      fontSize: 22,
-                      color: _suit == suit ? suitColor(suit) : Colors.white,
-                    ),
+                  label: SuitIcon(
+                    suit,
+                    size: 22,
+                    color: _suit == suit ? suitColor(suit) : Colors.white,
                   ),
                 ),
             ],
@@ -109,11 +108,17 @@ class _BiddingPanelState extends State<BiddingPanel> {
               FilledButton(
                 onPressed:
                     canBidValue ? () => widget.onCall(SuitBidCall(widget.seat, _suit, value)) : null,
-                child: Text('Δήλωση $value ${suitSymbol(_suit)}'),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [Text('Δήλωση $value '), SuitIcon(_suit, size: 16)],
+                ),
               ),
               FilledButton.tonal(
                 onPressed: () => widget.onCall(CapotCall(widget.seat, _suit)),
-                child: Text('Καπότο ${suitSymbol(_suit)}'),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [const Text('Καπότο '), SuitIcon(_suit, size: 16)],
+                ),
               ),
               if (_canDouble)
                 FilledButton.tonal(

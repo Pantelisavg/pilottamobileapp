@@ -7,6 +7,7 @@ import '../controllers/local_game_controller.dart';
 import '../widgets/bidding_panel.dart';
 import '../widgets/playing_card_widget.dart';
 import '../widgets/seat_layout.dart';
+import '../widgets/suit_icon.dart';
 
 class LocalGameScreen extends StatelessWidget {
   final int targetScore;
@@ -51,18 +52,17 @@ class _GameView extends StatelessWidget {
                         style: const TextStyle(color: Colors.white, fontSize: 12)),
                   ),
                 Expanded(child: _TableArea(controller: controller)),
+                // The hand stays visible above the bidding panel — you
+                // need to see your cards while you decide what to call.
                 _HumanHand(controller: controller),
+                if (controller.isHumanTurnToBid)
+                  BiddingPanel(
+                    auction: controller.auction!,
+                    seat: controller.humanSeat,
+                    onCall: controller.submitBid,
+                  ),
               ],
             ),
-            if (controller.isHumanTurnToBid)
-              Align(
-                alignment: Alignment.bottomCenter,
-                child: BiddingPanel(
-                  auction: controller.auction!,
-                  seat: controller.humanSeat,
-                  onCall: controller.submitBid,
-                ),
-              ),
             if (controller.phase == RoomPhase.handSummary)
               _HandSummaryOverlay(controller: controller),
             if (controller.phase == RoomPhase.matchOver)
@@ -106,8 +106,8 @@ class _ScoreHeader extends StatelessWidget {
                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               const SizedBox(width: 4),
-              Text(suitSymbol(contract.trumpSuit),
-                  style: TextStyle(fontSize: 22, color: contract.trumpSuit.isRed ? Colors.red.shade300 : Colors.white)),
+              SuitIcon(contract.trumpSuit,
+                  size: 22, color: contract.trumpSuit.isRed ? Colors.red.shade300 : Colors.white),
               if (contract.multiplier != ContractMultiplier.none)
                 Padding(
                   padding: const EdgeInsets.only(left: 4),
@@ -245,12 +245,20 @@ class _AuctionStatus extends StatelessWidget {
         children: [
           const Text('Δηλώσεις', style: TextStyle(color: Colors.white70, fontSize: 12)),
           const SizedBox(height: 6),
-          Text(
-            bid == null
-                ? 'Καμία δήλωση ακόμα'
-                : '${bid.isCapot ? 'Καπότο' : bid.value} ${suitSymbol(bid.suit)} — ${seatLabelRelativeTo(bid.seat, controller.humanSeat)}',
-            style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-          ),
+          if (bid == null)
+            const Text('Καμία δήλωση ακόμα',
+                style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold))
+          else
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('${bid.isCapot ? 'Καπότο' : bid.value} ',
+                    style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                SuitIcon(bid.suit, size: 18, color: Colors.white),
+                Text(' — ${seatLabelRelativeTo(bid.seat, controller.humanSeat)}',
+                    style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+              ],
+            ),
           const SizedBox(height: 6),
           Text('Σειρά: ${seatLabelRelativeTo(auction.seatToAct, controller.humanSeat)}',
               style: const TextStyle(color: Colors.amberAccent, fontSize: 12)),
@@ -327,10 +335,15 @@ class _HandSummaryOverlay extends StatelessWidget {
                 style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 4),
-              Text(
-                '${contract.isCapot ? 'Καπότο' : contract.value} ${suitSymbol(contract.trumpSuit)}'
-                ' — ${seatLabelRelativeTo(contract.biddingSeat, controller.humanSeat)}',
-                style: const TextStyle(fontSize: 14),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('${contract.isCapot ? 'Καπότο' : contract.value} ',
+                      style: const TextStyle(fontSize: 14)),
+                  SuitIcon(contract.trumpSuit, size: 16),
+                  Text(' — ${seatLabelRelativeTo(contract.biddingSeat, controller.humanSeat)}',
+                      style: const TextStyle(fontSize: 14)),
+                ],
               ),
               const Divider(height: 24),
               _row('Πόντοι φύλλων',

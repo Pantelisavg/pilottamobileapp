@@ -1,20 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:pilotta_engine/pilotta_engine.dart';
 
-Color suitColor(Suit suit) => suit.isRed ? const Color(0xFFC62828) : const Color(0xFF1B1B1B);
+import 'suit_icon.dart';
 
-String suitSymbol(Suit suit) {
-  switch (suit) {
-    case Suit.hearts:
-      return '♥';
-    case Suit.diamonds:
-      return '♦';
-    case Suit.clubs:
-      return '♣';
-    case Suit.spades:
-      return '♠';
-  }
-}
+Color suitColor(Suit suit) => suit.isRed ? const Color(0xFFC62828) : const Color(0xFF1B1B1B);
 
 /// Renders one playing card, either face up or as a card back.
 class PlayingCardWidget extends StatelessWidget {
@@ -70,7 +59,6 @@ class PlayingCardWidget extends StatelessWidget {
 
   Widget _face(PlayingCard c) {
     final color = suitColor(c.suit);
-    final symbol = suitSymbol(c.suit);
     return LayoutBuilder(
       builder: (context, constraints) {
         final fontSize = constraints.maxWidth * 0.34;
@@ -87,13 +75,13 @@ class PlayingCardWidget extends StatelessWidget {
                     Text(c.rank.short,
                         style: TextStyle(
                             color: color, fontWeight: FontWeight.bold, fontSize: fontSize * 0.62, height: 1)),
-                    Text(symbol, style: TextStyle(color: color, fontSize: fontSize * 0.5, height: 1)),
+                    SuitIcon(c.suit, size: fontSize * 0.5, color: color),
                   ],
                 ),
               ),
               Align(
                 alignment: Alignment.center,
-                child: Text(symbol, style: TextStyle(color: color, fontSize: fontSize)),
+                child: SuitIcon(c.suit, size: fontSize, color: color),
               ),
             ],
           ),
