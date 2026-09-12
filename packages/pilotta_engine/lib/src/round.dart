@@ -221,8 +221,7 @@ class PilottaHand {
     final rounded = roundToTens(
       northSouthTotal: settlement.rawTotals[Team.northSouth]!,
       eastWestTotal: settlement.rawTotals[Team.eastWest]!,
-      northSouthRawTrickPoints: trickPoints[Team.northSouth]!,
-      eastWestRawTrickPoints: trickPoints[Team.eastWest]!,
+      biddingTeam: biddingTeam,
     );
 
     return HandResult(

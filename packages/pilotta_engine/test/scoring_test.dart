@@ -7,71 +7,67 @@ void main() {
       final result = roundToTens(
         northSouthTotal: 287,
         eastWestTotal: 43,
-        northSouthRawTrickPoints: 287 % 100, // any non-multiple-of-10 works
-        eastWestRawTrickPoints: 43,
+        biddingTeam: Team.northSouth,
       );
       expect(result.northSouth, 29);
       expect(result.eastWest, 4);
     });
 
-    test('equal remainders: team with more raw trick points rounds up', () {
-      // Both totals end in 6; northSouth actually won more trick points.
+    test('a remainder of exactly 5 rounds down, not up (pilotta.io: 85 -> 8)', () {
       final result = roundToTens(
-        northSouthTotal: 96,
-        eastWestTotal: 66,
-        northSouthRawTrickPoints: 96,
-        eastWestRawTrickPoints: 66,
+        northSouthTotal: 85,
+        eastWestTotal: 77,
+        biddingTeam: Team.northSouth,
       );
-      expect(result.northSouth, 10); // 9.6 -> rounds up
-      expect(result.eastWest, 6); // 6.6 -> rounds down
+      expect(result.northSouth, 8); // 85 -> 8, not 9
+      expect(result.eastWest, 8); // 77 -> 8 (remainder 7 rounds up)
+    });
+
+    test('"Ο Κανόνας του 6": both remainders exactly 6, bidding team rounds up', () {
+      // 126-36 from the rules text: the bidding team (here northSouth)
+      // rounds up regardless of which side actually won more raw trick
+      // points — this is a fixed tie-break by role, not by point count.
+      final result = roundToTens(
+        northSouthTotal: 126,
+        eastWestTotal: 36,
+        biddingTeam: Team.northSouth,
+      );
+      expect(result.northSouth, 13); // rounds up: bidding team
+      expect(result.eastWest, 3); // rounds down: defence
+
+      final reversed = roundToTens(
+        northSouthTotal: 126,
+        eastWestTotal: 36,
+        biddingTeam: Team.eastWest,
+      );
+      expect(reversed.northSouth, 12); // now forced down: not the bidder
+      expect(reversed.eastWest, 4); // rounds up: the bidder
     });
 
     test('no remainder on either side: exact division', () {
       final result = roundToTens(
         northSouthTotal: 160,
         eastWestTotal: 0,
-        northSouthRawTrickPoints: 160,
-        eastWestRawTrickPoints: 0,
+        biddingTeam: Team.northSouth,
       );
       expect(result.northSouth, 16);
       expect(result.eastWest, 0);
     });
 
     test('worked example from the Cypriot rules text: 180-62 rounds to 18-6, '
-        'not 18-7 — a larger remainder below 5 still rounds down', () {
-      // Bidding team bid 80, won 100 trick points (total 180, remainder 0);
-      // defenders won 62 (remainder 2). 2 is numerically the larger
-      // remainder of the two, but since it's still under the halfway
-      // point it must round down, not up.
+        'not 18-7 — a larger remainder below the threshold still rounds down', () {
       final result = roundToTens(
         northSouthTotal: 180,
         eastWestTotal: 62,
-        northSouthRawTrickPoints: 100,
-        eastWestRawTrickPoints: 62,
+        biddingTeam: Team.northSouth,
       );
       expect(result.northSouth, 18);
       expect(result.eastWest, 6);
     });
-
-    test('both remainders >= 5 but unequal (5 and 7): still only one rounds up', () {
-      // 135 (remainder 5) and 27 (remainder 7) sum to 162: both remainders
-      // individually clear the halfway mark, so without the conflict rule
-      // both would round up and overshoot the fixed 162-point pool by one
-      // unit. Raw trick points decide: eastWest actually won more (127
-      // vs 35 — northSouth's total includes a 100-point contract bonus).
-      final result = roundToTens(
-        northSouthTotal: 135,
-        eastWestTotal: 27,
-        northSouthRawTrickPoints: 35,
-        eastWestRawTrickPoints: 127,
-      );
-      expect(result.northSouth, 13); // forced down despite remainder 5
-      expect(result.eastWest, 3); // rounds up: 2 + 1
-    });
   });
 
   group('settleContract', () {
-    test('bidding team makes contract: keeps points plus contract value', () {
+    test('plain contract made: keeps own points plus contract value', () {
       final settlement = settleContract(
         biddingTeam: Team.northSouth,
         biddingTeamPoints: 100,
@@ -83,7 +79,7 @@ void main() {
       expect(settlement.rawTotals[Team.eastWest], 62);
     });
 
-    test('bidding team fails: all points go to the opponents', () {
+    test('plain contract failed: all points go to the opponents', () {
       final settlement = settleContract(
         biddingTeam: Team.northSouth,
         biddingTeamPoints: 60,
@@ -95,26 +91,48 @@ void main() {
       expect(settlement.rawTotals[Team.eastWest], 60 + 102);
     });
 
-    test('doubled contract multiplies the winning side only', () {
-      final made = settleContract(
+    test('doubled and made: pilotta.io worked example (80 bid, 97 vs 65 trick '
+        'points, no declarations) scores 322-0, not a per-side multiply', () {
+      final settlement = settleContract(
         biddingTeam: Team.northSouth,
-        biddingTeamPoints: 100,
-        opponentPoints: 62,
+        biddingTeamPoints: 97,
+        opponentPoints: 65,
         contractValue: 80,
         multiplierFactor: 2,
       );
-      expect(made.rawTotals[Team.northSouth], (100 + 80) * 2);
-      expect(made.rawTotals[Team.eastWest], 62);
+      expect(settlement.contractMade, isTrue);
+      // 80*2 (doubled contract value) + 162 (full trick/declaration pool).
+      expect(settlement.rawTotals[Team.northSouth], 322);
+      // Doubling strips the defence of the points it would normally have
+      // kept in a plain contract.
+      expect(settlement.rawTotals[Team.eastWest], 0);
+    });
 
-      final failed = settleContract(
+    test('redoubled and made: contract value is quadrupled, pool still flat', () {
+      final settlement = settleContract(
+        biddingTeam: Team.northSouth,
+        biddingTeamPoints: 97,
+        opponentPoints: 65,
+        contractValue: 80,
+        multiplierFactor: 4,
+      );
+      expect(settlement.rawTotals[Team.northSouth], 80 * 4 + 162);
+      expect(settlement.rawTotals[Team.eastWest], 0);
+    });
+
+    test('doubled and failed: the defence sweeps the pool plus the doubled '
+        'contract value (inferred by symmetry with the confirmed '
+        'doubled-made case — not yet backed by its own worked example)', () {
+      final settlement = settleContract(
         biddingTeam: Team.northSouth,
         biddingTeamPoints: 60,
         opponentPoints: 102,
         contractValue: 80,
         multiplierFactor: 2,
       );
-      expect(failed.rawTotals[Team.northSouth], 0);
-      expect(failed.rawTotals[Team.eastWest], (60 + 102) * 2);
+      expect(settlement.contractMade, isFalse);
+      expect(settlement.rawTotals[Team.northSouth], 0);
+      expect(settlement.rawTotals[Team.eastWest], 80 * 2 + 162);
     });
 
     test('capot contract success is judged by madeOverride, not points', () {

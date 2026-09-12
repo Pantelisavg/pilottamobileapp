@@ -14,6 +14,18 @@ const List<Rank> declarationRankOrderHighToLow = [
   Rank.seven,
 ];
 
+/// Ranks that can form a declarable carre (four of a kind). Sevens and
+/// eights are worth zero points in every suit and are excluded — only
+/// Jacks (200), Nines (150), and Aces/Tens/Kings/Queens (100) count.
+const List<Rank> _declarableCarreRanks = [
+  Rank.jack,
+  Rank.nine,
+  Rank.ace,
+  Rank.ten,
+  Rank.king,
+  Rank.queen,
+];
+
 enum DeclarationKind { sequence, carre }
 
 /// A declared combination: a run of 3+ consecutive same-suit cards, or four
@@ -87,20 +99,29 @@ class Declaration {
     }
   }
 
-  /// Compares this declaration against [other] per the rules:
-  /// - A carre always beats a sequence.
-  /// - Between two carres, the higher-ranked one wins (Jacks > 9s > other;
-  ///   among "other" carres, higher card rank wins).
-  /// - Between two sequences: longer wins; if equal length, higher-ranked
-  ///   sequence wins (by top card); if that's equal too, the one in the
-  ///   trump suit wins.
+  /// Compares this declaration against [other] primarily by point value —
+  /// 200 (four Jacks) > 150 (four 9s) > 100 (a sequence of 5+, *or* a carre
+  /// of Aces/Tens/Kings/Queens — these two are the same named tier and
+  /// rank equally) > 50 (sequence of 4) > 20 (sequence of 3) — per the
+  /// rules' own grouping, not the more common Belote convention of "a
+  /// carre always outranks any sequence" regardless of value.
   ///
-  /// Returns >0 if this beats other, <0 if other beats this, 0 if truly
-  /// tied (no declaration should win — rare edge case).
+  /// Ties within a tier are broken by: for two carres, rank (Jacks > 9s >
+  /// other — moot in practice since equal-value carres are already the
+  /// same "other" tier); for two sequences, higher top card, then trump
+  /// suit. A carre and a sequence tied at exactly the same value (the one
+  /// concrete case: a 100-point carre vs. a 5+ sequence) have no ordering
+  /// rule specified anywhere in the rules, so they're treated as a genuine
+  /// tie — as with any other unresolved tie, neither declaration wins.
+  ///
+  /// Returns >0 if this beats other, <0 if other beats this, 0 if tied
+  /// (no declaration should win — rare edge case).
   int compareTo(Declaration other, Suit trumpSuit) {
-    if (kind != other.kind) {
-      return kind == DeclarationKind.carre ? 1 : -1;
-    }
+    final valueDiff = pointValue() - other.pointValue();
+    if (valueDiff != 0) return valueDiff;
+
+    if (kind != other.kind) return 0; // e.g. 100-carre vs. 5+ sequence: tied.
+
     if (kind == DeclarationKind.carre) {
       final weightDiff = _carreRankWeight() - other._carreRankWeight();
       if (weightDiff != 0) return weightDiff;
@@ -108,7 +129,10 @@ class Declaration {
           declarationRankOrderHighToLow.indexOf(carreRank);
       return rankDiff;
     }
-    // Both sequences.
+    // Both sequences at the same value tier — for length 3 or 4 that
+    // already means identical length, but two 5+ runs of different
+    // lengths (e.g. 5 vs. 6 cards) both score 100 and still need a
+    // tiebreak, so length comes first, then top card, then trump suit.
     if (length != other.length) return length - other.length;
     final highDiff = declarationRankOrderHighToLow.indexOf(other.highCard) -
         declarationRankOrderHighToLow.indexOf(highCard);
@@ -152,7 +176,9 @@ List<Declaration> findDeclarations(Seat seat, List<PlayingCard> hand) {
     }
   }
 
-  for (final rank in Rank.values) {
+  // Sevens and eights are worthless cards and don't form a declarable
+  // carre — only Jacks, Nines, Aces, Tens, Kings and Queens do.
+  for (final rank in _declarableCarreRanks) {
     final matching = hand.where((c) => c.rank == rank).toList();
     if (matching.length == 4) {
       declarations.add(Declaration.carre(seat, matching));

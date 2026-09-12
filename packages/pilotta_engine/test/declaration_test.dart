@@ -67,10 +67,47 @@ void main() {
       ];
       expect(findDeclarations(Seat.south, hand), isEmpty);
     });
+
+    test('four sevens or four eights are not a declarable carre — only '
+        'Jack/9/Ace/10/King/Queen are, per the rules\' own list', () {
+      final sevens = [
+        const PlayingCard(Suit.hearts, Rank.seven),
+        const PlayingCard(Suit.diamonds, Rank.seven),
+        const PlayingCard(Suit.clubs, Rank.seven),
+        const PlayingCard(Suit.spades, Rank.seven),
+      ];
+      expect(findDeclarations(Seat.south, sevens), isEmpty);
+
+      final eights = [
+        const PlayingCard(Suit.hearts, Rank.eight),
+        const PlayingCard(Suit.diamonds, Rank.eight),
+        const PlayingCard(Suit.clubs, Rank.eight),
+        const PlayingCard(Suit.spades, Rank.eight),
+      ];
+      expect(findDeclarations(Seat.south, eights), isEmpty);
+    });
   });
 
   group('Declaration.compareTo', () {
-    test('a carre always beats a sequence', () {
+    test('a carre beats a lower-value sequence', () {
+      final carre = Declaration.carre(Seat.south, [
+        const PlayingCard(Suit.hearts, Rank.king),
+        const PlayingCard(Suit.diamonds, Rank.king),
+        const PlayingCard(Suit.clubs, Rank.king),
+        const PlayingCard(Suit.spades, Rank.king),
+      ]);
+      final sequence = Declaration.sequence(Seat.west, [
+        const PlayingCard(Suit.clubs, Rank.ace),
+        const PlayingCard(Suit.clubs, Rank.king),
+        const PlayingCard(Suit.clubs, Rank.queen),
+      ]);
+      expect(carre.compareTo(sequence, trump), greaterThan(0));
+    });
+
+    test('a carre and a sequence tied at the same point value (100) are a '
+        'genuine tie, not an automatic carre win — the rules group a '
+        '5+ sequence and an Ace/10/King/Queen carre under the same '
+        '"Εκατοστάρι" (100) tier with no further ordering rule between them', () {
       final carre = Declaration.carre(Seat.south, [
         const PlayingCard(Suit.hearts, Rank.king),
         const PlayingCard(Suit.diamonds, Rank.king),
@@ -84,7 +121,8 @@ void main() {
         const PlayingCard(Suit.hearts, Rank.jack),
         const PlayingCard(Suit.hearts, Rank.ten),
       ]);
-      expect(carre.compareTo(sequence, trump), greaterThan(0));
+      expect(carre.compareTo(sequence, trump), 0);
+      expect(sequence.compareTo(carre, trump), 0);
     });
 
     test('four jacks beats four nines beats other carre', () {

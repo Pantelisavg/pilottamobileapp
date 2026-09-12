@@ -17,40 +17,33 @@ class RoundedScore {
 }
 
 /// Rounds each team's raw point total to the nearest multiple of 10 for the
-/// scoreboard: ordinary "round half up" applied independently to each
-/// team's own total (remainder < 5 rounds down, >= 5 rounds up).
+/// scoreboard: a remainder of 1–5 rounds down, 6–9 rounds up — applied
+/// independently to each team's own total.
 ///
 /// Because the two teams' raw trick-taking points always sum to a fixed
 /// total (162 normally, or 250/0 on a capot sweep), their remainders are
-/// linked — worked example from the rules: a bidding team total of 180
-/// (remainder 0) against a defending total of 62 (remainder 2) rounds to
-/// 18–6, i.e. the team with the *numerically larger* remainder (2) still
-/// rounds down, because 2 is below the halfway point. Independent
-/// "round half up" is only ever ambiguous in the one case both teams'
-/// remainders are simultaneously >= 5 — only possible when they sum to 12
-/// (e.g. 6 and 6, or 5 and 7) — since then both would round up and
-/// overshoot the fixed total by one unit. That conflict is resolved by
-/// raw trick-taking points: whoever actually won more of the 162 (or 250)
-/// point pool keeps the round-up, and the other team is dropped back down.
+/// linked, and independent rounding is only ever ambiguous in one specific
+/// case: both remainders land exactly on 6 (the *only* pair of remainders
+/// that (a) sums to 12, the only other value ≡162 mod 10 alongside 2, and
+/// (b) has both sides individually clear the round-up threshold — this is
+/// "Ο Κανόνας του 6" ["the Rule of Six"]). Both teams would then round up
+/// and overshoot the fixed total by one unit, so by convention the
+/// bidding team keeps the round-up and the defence is dropped back down.
 ///
-/// [northSouthRawTrickPoints]/[eastWestRawTrickPoints] must be the raw
-/// card-point totals from trick-taking alone (i.e. before adding
-/// declarations/belote/contract bonuses), since those bonuses are always
-/// multiples of 10 and only the trick points can produce a remainder.
+/// [biddingTeam] is only consulted in that one tied-at-6 case.
 RoundedScore roundToTens({
   required int northSouthTotal,
   required int eastWestTotal,
-  required int northSouthRawTrickPoints,
-  required int eastWestRawTrickPoints,
+  required Team biddingTeam,
 }) {
   final nsRem = northSouthTotal % 10;
   final ewRem = eastWestTotal % 10;
-  final nsWantsUp = nsRem >= 5;
-  final ewWantsUp = ewRem >= 5;
+  final nsWantsUp = nsRem >= 6;
+  final ewWantsUp = ewRem >= 6;
 
   bool nsUp, ewUp;
   if (nsWantsUp && ewWantsUp) {
-    nsUp = northSouthRawTrickPoints >= eastWestRawTrickPoints;
+    nsUp = biddingTeam == Team.northSouth;
     ewUp = !nsUp;
   } else {
     nsUp = nsWantsUp;
@@ -77,19 +70,22 @@ class HandSettlement {
 
 /// Applies the "made contract / failed contract" rule:
 ///
-/// - If the bidding team's own points (trick points they won, plus any
-///   declarations/belote awarded to them) reach the contract value, they
-///   keep those points AND additionally score the contract value itself.
-///   The opposing team keeps whatever points they earned normally.
-/// - If the bidding team fails to reach the contract value, ALL points
-///   from the hand (both teams' trick points, declarations and belote)
-///   go to the opposing team instead, and the bidding team scores 0.
-///
-/// A doubled/redoubled contract multiplies whichever side ends up winning
-/// the hand's points (the bidding team if the contract is made, or the
-/// defenders if it fails) by [multiplierFactor] (2 for doubled, 4 for
-/// redoubled, 1 otherwise) — doubling is a bet on the contract's outcome,
-/// so only the side proven right by that outcome benefits from it.
+/// - Plain (undoubled) contract, made: the bidding team keeps its own
+///   trick points and declarations, plus the contract value. The defence
+///   keeps whatever it earned normally.
+/// - Plain (undoubled) contract, failed: the bidding team scores 0, and
+///   the entire hand's points (both teams' trick points and declarations)
+///   go to the defence instead.
+/// - Doubled/redoubled ("κλειστό"/"ξανακλειστό"), either outcome: closing
+///   raises the stakes for both sides at once — the side proven right by
+///   the outcome takes the *entire* point pool from the hand (both teams'
+///   trick points and declarations combined) plus the contract value
+///   multiplied by [multiplierFactor] (2 doubled, 4 redoubled), and the
+///   other side scores nothing at all, even points it would otherwise
+///   have kept in a plain contract. Confirmed against a worked example:
+///   an 80 bid, doubled and made with 97 trick points against the
+///   defence's 65 (162 total, no declarations), scores 80×2 + 162 = 322
+///   for the bidding team and 0 for the defence.
 HandSettlement settleContract({
   required Team biddingTeam,
   required int biddingTeamPoints,
@@ -104,16 +100,30 @@ HandSettlement settleContract({
 }) {
   final made = madeOverride ?? (biddingTeamPoints >= contractValue);
   final opponentTeam = biddingTeam.opponent;
+  final pool = biddingTeamPoints + opponentPoints;
+  final doubled = multiplierFactor > 1;
 
   if (made) {
+    if (doubled) {
+      return HandSettlement({
+        biddingTeam: contractValue * multiplierFactor + pool,
+        opponentTeam: 0,
+      }, true);
+    }
     return HandSettlement({
-      biddingTeam: (biddingTeamPoints + contractValue) * multiplierFactor,
+      biddingTeam: biddingTeamPoints + contractValue,
       opponentTeam: opponentPoints,
     }, true);
   }
 
+  if (doubled) {
+    return HandSettlement({
+      biddingTeam: 0,
+      opponentTeam: contractValue * multiplierFactor + pool,
+    }, false);
+  }
   return HandSettlement({
     biddingTeam: 0,
-    opponentTeam: (biddingTeamPoints + opponentPoints) * multiplierFactor,
+    opponentTeam: pool,
   }, false);
 }
