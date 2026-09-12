@@ -17,14 +17,26 @@ class RoundedScore {
 }
 
 /// Rounds each team's raw point total to the nearest multiple of 10 for the
-/// scoreboard, per the rule: divide by 10; whichever team has the larger
-/// remainder rounds up and the other rounds down; if the remainders tie,
-/// the team that actually won more raw trick-taking points rounds up.
+/// scoreboard: ordinary "round half up" applied independently to each
+/// team's own total (remainder < 5 rounds down, >= 5 rounds up).
 ///
-/// [rawTrickPointsBySeat's team] must be the raw card-point totals from
-/// trick-taking alone (i.e. before adding declarations/belote/contract
-/// bonuses), since those bonuses are already multiples of 10 and only the
-/// trick points can produce a non-zero remainder.
+/// Because the two teams' raw trick-taking points always sum to a fixed
+/// total (162 normally, or 250/0 on a capot sweep), their remainders are
+/// linked — worked example from the rules: a bidding team total of 180
+/// (remainder 0) against a defending total of 62 (remainder 2) rounds to
+/// 18–6, i.e. the team with the *numerically larger* remainder (2) still
+/// rounds down, because 2 is below the halfway point. Independent
+/// "round half up" is only ever ambiguous in the one case both teams'
+/// remainders are simultaneously >= 5 — only possible when they sum to 12
+/// (e.g. 6 and 6, or 5 and 7) — since then both would round up and
+/// overshoot the fixed total by one unit. That conflict is resolved by
+/// raw trick-taking points: whoever actually won more of the 162 (or 250)
+/// point pool keeps the round-up, and the other team is dropped back down.
+///
+/// [northSouthRawTrickPoints]/[eastWestRawTrickPoints] must be the raw
+/// card-point totals from trick-taking alone (i.e. before adding
+/// declarations/belote/contract bonuses), since those bonuses are always
+/// multiples of 10 and only the trick points can produce a remainder.
 RoundedScore roundToTens({
   required int northSouthTotal,
   required int eastWestTotal,
@@ -33,17 +45,16 @@ RoundedScore roundToTens({
 }) {
   final nsRem = northSouthTotal % 10;
   final ewRem = eastWestTotal % 10;
+  final nsWantsUp = nsRem >= 5;
+  final ewWantsUp = ewRem >= 5;
 
-  var nsUp = false;
-  var ewUp = false;
-  if (nsRem != 0 || ewRem != 0) {
-    if (nsRem == ewRem) {
-      nsUp = northSouthRawTrickPoints >= eastWestRawTrickPoints;
-      ewUp = !nsUp;
-    } else {
-      nsUp = nsRem > ewRem;
-      ewUp = ewRem > nsRem;
-    }
+  bool nsUp, ewUp;
+  if (nsWantsUp && ewWantsUp) {
+    nsUp = northSouthRawTrickPoints >= eastWestRawTrickPoints;
+    ewUp = !nsUp;
+  } else {
+    nsUp = nsWantsUp;
+    ewUp = ewWantsUp;
   }
 
   final ns = (northSouthTotal ~/ 10) + (nsUp ? 1 : 0);

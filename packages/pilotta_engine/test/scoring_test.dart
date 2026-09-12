@@ -36,6 +36,38 @@ void main() {
       expect(result.northSouth, 16);
       expect(result.eastWest, 0);
     });
+
+    test('worked example from the Cypriot rules text: 180-62 rounds to 18-6, '
+        'not 18-7 — a larger remainder below 5 still rounds down', () {
+      // Bidding team bid 80, won 100 trick points (total 180, remainder 0);
+      // defenders won 62 (remainder 2). 2 is numerically the larger
+      // remainder of the two, but since it's still under the halfway
+      // point it must round down, not up.
+      final result = roundToTens(
+        northSouthTotal: 180,
+        eastWestTotal: 62,
+        northSouthRawTrickPoints: 100,
+        eastWestRawTrickPoints: 62,
+      );
+      expect(result.northSouth, 18);
+      expect(result.eastWest, 6);
+    });
+
+    test('both remainders >= 5 but unequal (5 and 7): still only one rounds up', () {
+      // 135 (remainder 5) and 27 (remainder 7) sum to 162: both remainders
+      // individually clear the halfway mark, so without the conflict rule
+      // both would round up and overshoot the fixed 162-point pool by one
+      // unit. Raw trick points decide: eastWest actually won more (127
+      // vs 35 — northSouth's total includes a 100-point contract bonus).
+      final result = roundToTens(
+        northSouthTotal: 135,
+        eastWestTotal: 27,
+        northSouthRawTrickPoints: 35,
+        eastWestRawTrickPoints: 127,
+      );
+      expect(result.northSouth, 13); // forced down despite remainder 5
+      expect(result.eastWest, 3); // rounds up: 2 + 1
+    });
   });
 
   group('settleContract', () {
