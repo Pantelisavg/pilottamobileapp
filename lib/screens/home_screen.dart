@@ -3,6 +3,12 @@ import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
+import '../theme/game_mode_accent.dart';
+import '../theme/pilotta_colors.dart';
+import '../theme/pilotta_spacing.dart';
+import '../theme/pilotta_typography.dart';
+import '../widgets/felt_background.dart';
+import '../widgets/felt_panel.dart';
 import 'bluetooth_lobby_screen.dart';
 import 'local_game_screen.dart';
 import 'online_lobby_screen.dart';
@@ -20,65 +26,88 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0B3D2E),
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text('ΠΙΛΟΤΤΑ',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 44,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 6,
-                    )),
-                const SizedBox(height: 4),
-                const Text('Παλαριστή',
-                    style: TextStyle(color: Colors.white60, fontSize: 16, letterSpacing: 2)),
-                const SizedBox(height: 40),
-                _TargetScoreSelector(
-                  value: _targetScore,
-                  onChanged: (v) => setState(() => _targetScore = v),
+      backgroundColor: Colors.transparent,
+      body: FeltBackground(
+        child: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: PilottaSpacing.lg, vertical: PilottaSpacing.xl),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 360),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const _Wordmark(),
+                    const SizedBox(height: PilottaSpacing.xxl),
+                    _TargetScoreSelector(
+                      value: _targetScore,
+                      onChanged: (v) => setState(() => _targetScore = v),
+                    ),
+                    const SizedBox(height: PilottaSpacing.xl),
+                    _ModeMenuTile(
+                      mode: GameModeAccent.localBots,
+                      title: 'Παιχνίδι με Bots',
+                      subtitle: 'Τοπικά, χωρίς σύνδεση — παίζεις αμέσως',
+                      onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                        builder: (_) => LocalGameScreen(targetScore: _targetScore),
+                      )),
+                    ),
+                    const SizedBox(height: PilottaSpacing.sm),
+                    _ModeMenuTile(
+                      mode: GameModeAccent.online,
+                      title: 'Online Παιχνίδι',
+                      subtitle: 'Δωμάτιο με κωδικό, παίκτες από παντού',
+                      onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                        builder: (_) => const OnlineLobbyScreen(),
+                      )),
+                    ),
+                    // Nearby Connections (the Bluetooth/local-network
+                    // backend) is an Android-only plugin.
+                    if (!kIsWeb && Platform.isAndroid) ...[
+                      const SizedBox(height: PilottaSpacing.sm),
+                      _ModeMenuTile(
+                        mode: GameModeAccent.bluetooth,
+                        title: 'Bluetooth / Τοπικό δίκτυο',
+                        subtitle: 'Χωρίς internet — παίκτες κοντά σου',
+                        onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                          builder: (_) => const BluetoothLobbyScreen(),
+                        )),
+                      ),
+                    ],
+                  ],
                 ),
-                const SizedBox(height: 28),
-                _MenuButton(
-                  icon: Icons.smart_toy_outlined,
-                  label: 'Παιχνίδι με Bots',
-                  subtitle: 'Τοπικά, χωρίς σύνδεση',
-                  onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => LocalGameScreen(targetScore: _targetScore),
-                  )),
-                ),
-                const SizedBox(height: 12),
-                _MenuButton(
-                  icon: Icons.public,
-                  label: 'Online Παιχνίδι',
-                  subtitle: 'Παίξε με φίλους μέσω server',
-                  onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => const OnlineLobbyScreen(),
-                  )),
-                ),
-                // Nearby Connections (the Bluetooth/local-network backend)
-                // is an Android-only plugin.
-                if (!kIsWeb && Platform.isAndroid) ...[
-                  const SizedBox(height: 12),
-                  _MenuButton(
-                    icon: Icons.bluetooth,
-                    label: 'Bluetooth / Τοπικό δίκτυο',
-                    subtitle: 'Παίξε χωρίς internet',
-                    onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => const BluetoothLobbyScreen(),
-                    )),
-                  ),
-                ],
-              ],
+              ),
             ),
           ),
         ),
       ),
+    );
+  }
+}
+
+class _Wordmark extends StatelessWidget {
+  const _Wordmark();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        const Text('ΠΙΛΟΤΤΑ', style: PilottaTypography.display),
+        const SizedBox(height: PilottaSpacing.xs),
+        Container(
+          width: 56,
+          height: 3,
+          decoration: BoxDecoration(
+            color: PilottaColors.gold500,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        const SizedBox(height: PilottaSpacing.xs),
+        Text(
+          'ΠΑΛΑΡΙΣΤΗ',
+          style: PilottaTypography.caption.copyWith(color: PilottaColors.ink200, letterSpacing: 3),
+        ),
+      ],
     );
   }
 }
@@ -94,73 +123,74 @@ class _TargetScoreSelector extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const Text('Πόντοι νίκης', style: TextStyle(color: Colors.white70)),
-        const SizedBox(height: 8),
+        Text('ΠΟΝΤΟΙ ΝΙΚΗΣ', style: PilottaTypography.caption),
+        const SizedBox(height: PilottaSpacing.xs),
         SegmentedButton<int>(
           segments: [
-            for (final option in options)
-              ButtonSegment(value: option, label: Text('$option')),
+            for (final option in options) ButtonSegment(value: option, label: Text('$option')),
           ],
           selected: {value},
           onSelectionChanged: (s) => onChanged(s.first),
-          style: SegmentedButton.styleFrom(
-            foregroundColor: Colors.white,
-            selectedForegroundColor: Colors.black,
-            selectedBackgroundColor: Colors.amber,
-          ),
+          showSelectedIcon: false,
         ),
       ],
     );
   }
 }
 
-class _MenuButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
+/// One entry in the mode menu: an icon badge tinted with the mode's accent
+/// color, title/subtitle, a small [ModeBadge] naming the mode explicitly,
+/// and a trailing chevron affording "tap to enter." The accent color +
+/// icon + text label together (color alone is never the only signal) keep
+/// the three modes visually distinct at a glance, including for
+/// color-blind users.
+class _ModeMenuTile extends StatelessWidget {
+  final GameModeAccent mode;
+  final String title;
   final String subtitle;
   final VoidCallback onTap;
 
-  const _MenuButton({
-    required this.icon,
-    required this.label,
+  const _ModeMenuTile({
+    required this.mode,
+    required this.title,
     required this.subtitle,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 300,
-      child: Material(
-        color: const Color(0xFF13543F),
-        borderRadius: BorderRadius.circular(14),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(14),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-            child: Row(
+    return FeltPanel(
+      onTap: onTap,
+      padding: const EdgeInsets.symmetric(horizontal: PilottaSpacing.md, vertical: PilottaSpacing.sm + 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: mode.color.withValues(alpha: 0.18),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(mode.icon, color: mode.color, size: 22),
+          ),
+          const SizedBox(width: PilottaSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(icon, color: Colors.amber, size: 28),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(label,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 17,
-                            fontWeight: FontWeight.w600,
-                          )),
-                      Text(subtitle, style: const TextStyle(color: Colors.white60, fontSize: 12)),
-                    ],
-                  ),
-                ),
+                ModeBadge(mode: mode, dense: true),
+                const SizedBox(height: PilottaSpacing.xxs),
+                Text(title, style: PilottaTypography.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+                const SizedBox(height: 2),
+                Text(subtitle, style: PilottaTypography.bodyMuted, maxLines: 2, overflow: TextOverflow.ellipsis),
               ],
             ),
           ),
-        ),
+          const SizedBox(width: PilottaSpacing.xs),
+          const Icon(Icons.chevron_right, color: PilottaColors.ink400),
+        ],
       ),
     );
   }
