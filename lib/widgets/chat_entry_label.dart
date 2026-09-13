@@ -12,7 +12,7 @@ String chatEntryLabel(ChatEntry entry, Seat viewer) {
     ChatEntryKind.chat => '$who: ${entry.text}',
     ChatEntryKind.declarationAnnounced => '$who δηλώνει!',
     ChatEntryKind.declarationRevealed =>
-      '$who αποκαλύπτει: ${declarationLabelFromJson(entry.declaration!)}',
+      '$who αποκαλύπτει: ${declarationsLabelFromJsonList(entry.declarations!)}',
     ChatEntryKind.pilotta => '$who: Πιλόττα!',
     ChatEntryKind.repilotta => '$who: Ρεπιλόττα!',
   };
@@ -21,4 +21,5 @@ String chatEntryLabel(ChatEntry entry, Seat viewer) {
 /// Whether [entry] is a system event worth flashing on screen for every
 /// player for a few seconds — as opposed to plain chat, which only needs
 /// to show up in the log itself.
-bool chatEntryIsFlashWorthy(ChatEntry entry) => entry.kind != ChatEntryKind.chat;
+bool chatEntryIsFlashWorthy(ChatEntry entry) =>
+    entry.kind != ChatEntryKind.chat;

@@ -8,12 +8,14 @@ import 'package:test/test.dart';
 /// travel over a WebSocket or a Nearby Connections byte payload.
 T roundTripClient<T extends ClientMessage>(T message) {
   final jsonString = jsonEncode(message.toJson());
-  return ClientMessage.fromJson(jsonDecode(jsonString) as Map<String, dynamic>) as T;
+  return ClientMessage.fromJson(jsonDecode(jsonString) as Map<String, dynamic>)
+      as T;
 }
 
 T roundTripServer<T extends ServerMessage>(T message) {
   final jsonString = jsonEncode(message.toJson());
-  return ServerMessage.fromJson(jsonDecode(jsonString) as Map<String, dynamic>) as T;
+  return ServerMessage.fromJson(jsonDecode(jsonString) as Map<String, dynamic>)
+      as T;
 }
 
 void main() {
@@ -76,8 +78,8 @@ void main() {
     });
 
     test('join_room', () {
-      final decoded =
-          roundTripClient(JoinRoomMessage(roomCode: 'AB12', playerName: 'Νίκος'));
+      final decoded = roundTripClient(
+          JoinRoomMessage(roomCode: 'AB12', playerName: 'Νίκος'));
       expect(decoded.roomCode, 'AB12');
       expect(decoded.playerName, 'Νίκος');
     });
@@ -90,18 +92,20 @@ void main() {
     });
 
     test('bid and play_card carry their payload', () {
-      final bid = roundTripClient(BidMessage(SuitBidCall(Seat.south, Suit.spades, 90)));
+      final bid =
+          roundTripClient(BidMessage(SuitBidCall(Seat.south, Suit.spades, 90)));
       expect((bid.call as SuitBidCall).value, 90);
 
-      final play = roundTripClient(PlayCardMessage(const PlayingCard(Suit.hearts, Rank.ace)));
+      final play = roundTripClient(
+          PlayCardMessage(const PlayingCard(Suit.hearts, Rank.ace)));
       expect(play.card, const PlayingCard(Suit.hearts, Rank.ace));
     });
   });
 
   group('ServerMessage round trips', () {
     test('welcome', () {
-      final decoded =
-          roundTripServer(WelcomeMessage(roomCode: 'ZZ99', yourSeat: Seat.east));
+      final decoded = roundTripServer(
+          WelcomeMessage(roomCode: 'ZZ99', yourSeat: Seat.east));
       expect(decoded.roomCode, 'ZZ99');
       expect(decoded.yourSeat, Seat.east);
     });
@@ -117,10 +121,14 @@ void main() {
         yourSeat: Seat.south,
         phase: RoomPhase.playing,
         seats: {
-          Seat.south: const SeatInfo(playerName: 'Εσύ', isBot: false, connected: true),
-          Seat.west: const SeatInfo(playerName: null, isBot: true, connected: true),
-          Seat.north: const SeatInfo(playerName: 'Φίλος', isBot: false, connected: true),
-          Seat.east: const SeatInfo(playerName: null, isBot: true, connected: true),
+          Seat.south:
+              const SeatInfo(playerName: 'Εσύ', isBot: false, connected: true),
+          Seat.west:
+              const SeatInfo(playerName: null, isBot: true, connected: true),
+          Seat.north: const SeatInfo(
+              playerName: 'Φίλος', isBot: false, connected: true),
+          Seat.east:
+              const SeatInfo(playerName: null, isBot: true, connected: true),
         },
         targetScore: 101,
         totals: {'northSouth': 40, 'eastWest': 20},
@@ -140,14 +148,24 @@ void main() {
           Seat.north: DeclarationAnnounceState.revealed.name,
           Seat.east: DeclarationAnnounceState.forfeited.name,
         },
+        // A hand can hold more than one declaration at once — only the best
+        // is announced out loud, but all of them are shown once revealed.
         revealedDeclarations: {
-          Seat.north: declarationToJson(Declaration.sequence(Seat.north, const [
-            PlayingCard(Suit.clubs, Rank.ace),
-            PlayingCard(Suit.clubs, Rank.king),
-            PlayingCard(Suit.clubs, Rank.queen),
-          ])),
+          Seat.north: [
+            declarationToJson(Declaration.sequence(Seat.north, const [
+              PlayingCard(Suit.clubs, Rank.ace),
+              PlayingCard(Suit.clubs, Rank.king),
+              PlayingCard(Suit.clubs, Rank.queen),
+            ])),
+            declarationToJson(Declaration.sequence(Seat.north, const [
+              PlayingCard(Suit.hearts, Rank.jack),
+              PlayingCard(Suit.hearts, Rank.ten),
+              PlayingCard(Suit.hearts, Rank.nine),
+            ])),
+          ],
         },
-        yourBestDeclaration: declarationToJson(Declaration.sequence(Seat.south, const [
+        yourBestDeclaration:
+            declarationToJson(Declaration.sequence(Seat.south, const [
           PlayingCard(Suit.spades, Rank.jack),
           PlayingCard(Suit.spades, Rank.nine),
           PlayingCard(Suit.spades, Rank.ace),
@@ -167,9 +185,12 @@ void main() {
       expect(decoded.handSizes[Seat.west], 8);
       expect(decoded.readyForNextHand, {Seat.south});
       expect(decoded.totals['northSouth'], 40);
-      expect(decoded.declarationStates[Seat.south], DeclarationAnnounceState.announced.name);
-      expect(decoded.declarationStates[Seat.east], DeclarationAnnounceState.forfeited.name);
-      expect(decoded.revealedDeclarations[Seat.north]?['pointValue'], 20);
+      expect(decoded.declarationStates[Seat.south],
+          DeclarationAnnounceState.announced.name);
+      expect(decoded.declarationStates[Seat.east],
+          DeclarationAnnounceState.forfeited.name);
+      expect(decoded.revealedDeclarations[Seat.north], hasLength(2));
+      expect(decoded.revealedDeclarations[Seat.north]?.first['pointValue'], 20);
       expect(decoded.revealedDeclarations.containsKey(Seat.south), isFalse);
       expect(decoded.yourBestDeclaration?['pointValue'], 20);
       expect(decoded.canAnnounceDeclaration, isFalse);

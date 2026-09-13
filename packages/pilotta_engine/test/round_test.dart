@@ -69,9 +69,13 @@ void main() {
     // must trump every trick it does not lead, so it wins all 8 tricks
     // regardless of how the others discard.
     Map<Seat, List<PlayingCard>> capotDeal() => {
-          Seat.south: [for (final r in Rank.values) PlayingCard(Suit.spades, r)],
+          Seat.south: [
+            for (final r in Rank.values) PlayingCard(Suit.spades, r)
+          ],
           Seat.west: [for (final r in Rank.values) PlayingCard(Suit.hearts, r)],
-          Seat.north: [for (final r in Rank.values) PlayingCard(Suit.diamonds, r)],
+          Seat.north: [
+            for (final r in Rank.values) PlayingCard(Suit.diamonds, r)
+          ],
           Seat.east: [for (final r in Rank.values) PlayingCard(Suit.clubs, r)],
         };
 
@@ -112,7 +116,9 @@ void main() {
           (250 + declarationsAndBelote) + 160);
     });
 
-    test('an explicit Capot contract is only made by literally sweeping all tricks', () {
+    test(
+        'an explicit Capot contract is only made by literally sweeping all tricks',
+        () {
       final hands = capotDeal();
       final contract = Contract(
         biddingSeat: Seat.south,
@@ -133,7 +139,9 @@ void main() {
           (250 + declarationsAndBelote) + kCapotValue);
     });
 
-    test('failing to sweep on a Capot contract awards everything to the defenders', () {
+    test(
+        'failing to sweep on a Capot contract awards everything to the defenders',
+        () {
       // Same deal, but this time east/west/north are the bidding side's
       // opponents and it is *their* Capot contract that will fail because
       // south (not on their team) actually takes every trick.
@@ -215,13 +223,102 @@ void main() {
         value: 80,
         isCapot: false,
       );
-      final hand = PilottaHand(contract: contract, initialHands: hands, firstLeader: Seat.south);
+      final hand = PilottaHand(
+          contract: contract, initialHands: hands, firstLeader: Seat.south);
       autoPlayToCompletion(hand);
       final result = hand.finish();
 
       expect(result.declarations.winningTeam, Team.northSouth);
       expect(result.declarations.winningTeamPoints, 50);
       expect(result.declarations.beloteSeat, isNull);
+    });
+
+    test(
+        'a seat holding two separate declarations announces only the '
+        'best, but both are revealed and both score', () {
+      // South holds hearts A-K-Q-J (a 4-run, 50 pts) *and*, separately,
+      // clubs A-K-Q (a 3-run, 20 pts) — two non-overlapping declarations
+      // in the same hand. Only the 50 is what gets announced/compared, but
+      // once revealed both count: their side should score 50 + 20 = 70,
+      // not just 50.
+      final hands = {
+        Seat.south: [
+          const PlayingCard(Suit.hearts, Rank.ace),
+          const PlayingCard(Suit.hearts, Rank.king),
+          const PlayingCard(Suit.hearts, Rank.queen),
+          const PlayingCard(Suit.hearts, Rank.jack),
+          const PlayingCard(Suit.clubs, Rank.ace),
+          const PlayingCard(Suit.clubs, Rank.king),
+          const PlayingCard(Suit.clubs, Rank.queen),
+          const PlayingCard(Suit.diamonds, Rank.seven),
+        ],
+        // Carefully dealt so nobody else holds any run of 3+ consecutive
+        // same-suit cards, or four of a kind — no other declarations.
+        Seat.west: [
+          const PlayingCard(Suit.hearts, Rank.ten),
+          const PlayingCard(Suit.hearts, Rank.seven),
+          const PlayingCard(Suit.clubs, Rank.nine),
+          const PlayingCard(Suit.diamonds, Rank.ace),
+          const PlayingCard(Suit.diamonds, Rank.jack),
+          const PlayingCard(Suit.diamonds, Rank.eight),
+          const PlayingCard(Suit.spades, Rank.queen),
+          const PlayingCard(Suit.spades, Rank.nine),
+        ],
+        Seat.north: [
+          const PlayingCard(Suit.hearts, Rank.nine),
+          const PlayingCard(Suit.clubs, Rank.jack),
+          const PlayingCard(Suit.clubs, Rank.eight),
+          const PlayingCard(Suit.diamonds, Rank.king),
+          const PlayingCard(Suit.diamonds, Rank.ten),
+          const PlayingCard(Suit.spades, Rank.ace),
+          const PlayingCard(Suit.spades, Rank.jack),
+          const PlayingCard(Suit.spades, Rank.eight),
+        ],
+        Seat.east: [
+          const PlayingCard(Suit.hearts, Rank.eight),
+          const PlayingCard(Suit.clubs, Rank.ten),
+          const PlayingCard(Suit.clubs, Rank.seven),
+          const PlayingCard(Suit.diamonds, Rank.queen),
+          const PlayingCard(Suit.diamonds, Rank.nine),
+          const PlayingCard(Suit.spades, Rank.king),
+          const PlayingCard(Suit.spades, Rank.ten),
+          const PlayingCard(Suit.spades, Rank.seven),
+        ],
+      };
+
+      final contract = Contract(
+        biddingSeat: Seat.south,
+        trumpSuit: Suit.spades,
+        value: 80,
+        isCapot: false,
+      );
+
+      // Sanity-check the deal: nobody but South has anything declarable.
+      expect(findDeclarations(Seat.west, hands[Seat.west]!), isEmpty);
+      expect(findDeclarations(Seat.north, hands[Seat.north]!), isEmpty);
+      expect(findDeclarations(Seat.east, hands[Seat.east]!), isEmpty);
+
+      final hand = PilottaHand(
+          contract: contract, initialHands: hands, firstLeader: Seat.south);
+
+      expect(hand.bestDeclarationOf(Seat.south)?.pointValue(), 50);
+      expect(
+        hand.allDeclarationsOf(Seat.south).map((d) => d.pointValue()).toSet(),
+        {50, 20},
+      );
+
+      autoPlayToCompletion(hand);
+      final result = hand.finish();
+
+      expect(result.declarations.winningTeam, Team.northSouth);
+      expect(result.declarations.winningTeamPoints, 70);
+      expect(result.declarations.bestPerSeat[Seat.south]?.pointValue(), 50);
+      expect(
+        result.declarations.allPerSeat[Seat.south]
+            ?.map((d) => d.pointValue())
+            .toSet(),
+        {50, 20},
+      );
     });
 
     test('belote (trump K+Q in one hand) awards 20 points to that team', () {
@@ -274,14 +371,16 @@ void main() {
         value: 80,
         isCapot: false,
       );
-      final hand = PilottaHand(contract: contract, initialHands: hands, firstLeader: Seat.south);
+      final hand = PilottaHand(
+          contract: contract, initialHands: hands, firstLeader: Seat.south);
       autoPlayToCompletion(hand);
       final result = hand.finish();
 
       expect(result.declarations.beloteSeat, Seat.south);
     });
 
-    test('belote is exempt from the announce/reveal timing — it counts even '
+    test(
+        'belote is exempt from the announce/reveal timing — it counts even '
         'with no announce/reveal calls made at all', () {
       final hands = {
         Seat.south: [
@@ -332,7 +431,8 @@ void main() {
         value: 80,
         isCapot: false,
       );
-      final hand = PilottaHand(contract: contract, initialHands: hands, firstLeader: Seat.south);
+      final hand = PilottaHand(
+          contract: contract, initialHands: hands, firstLeader: Seat.south);
       // Nobody announces or reveals anything at all.
       autoPlayToCompletion(hand, autoDeclare: false);
       final result = hand.finish();
@@ -418,7 +518,8 @@ void main() {
       expect(hand.canAnnounceDeclaration(Seat.south), isTrue);
 
       hand.announceDeclaration(Seat.south);
-      expect(hand.declarationStateOf(Seat.south), DeclarationAnnounceState.announced);
+      expect(hand.declarationStateOf(Seat.south),
+          DeclarationAnnounceState.announced);
       // Already announced — can't announce again.
       expect(hand.canAnnounceDeclaration(Seat.south), isFalse);
       expect(() => hand.announceDeclaration(Seat.south), throwsStateError);
@@ -452,7 +553,8 @@ void main() {
         hand.playCard(seat, hand.legalPlays(seat).first);
       }
 
-      expect(hand.declarationStateOf(Seat.south), DeclarationAnnounceState.revealed);
+      expect(hand.declarationStateOf(Seat.south),
+          DeclarationAnnounceState.revealed);
       final result = hand.finish();
       expect(result.declarations.bestPerSeat[Seat.south]?.pointValue(), 50);
       expect(result.declarations.winningTeam, Team.northSouth);
@@ -460,7 +562,8 @@ void main() {
       expect(result.declarations.forfeitedPerSeat, isEmpty);
     });
 
-    test('forgetting to reveal before your trick-2 card forfeits it — it '
+    test(
+        'forgetting to reveal before your trick-2 card forfeits it — it '
         'does not count towards scoring', () {
       final hand = makeHand();
       hand.announceDeclaration(Seat.south);
@@ -471,9 +574,11 @@ void main() {
         hand.playCard(seat, hand.legalPlays(seat).first);
       }
       // South plays their trick-2 card WITHOUT revealing first.
-      expect(hand.declarationStateOf(Seat.south), DeclarationAnnounceState.announced);
+      expect(hand.declarationStateOf(Seat.south),
+          DeclarationAnnounceState.announced);
       hand.playCard(Seat.south, hand.legalPlays(Seat.south).first);
-      expect(hand.declarationStateOf(Seat.south), DeclarationAnnounceState.forfeited);
+      expect(hand.declarationStateOf(Seat.south),
+          DeclarationAnnounceState.forfeited);
       expect(hand.canRevealDeclaration(Seat.south), isFalse);
 
       while (!hand.isHandComplete) {
@@ -488,7 +593,8 @@ void main() {
       final result = hand.finish();
       expect(result.declarations.bestPerSeat[Seat.south], isNull);
       expect(result.declarations.winningTeam, isNull);
-      expect(result.declarations.forfeitedPerSeat[Seat.south]?.pointValue(), 50);
+      expect(
+          result.declarations.forfeitedPerSeat[Seat.south]?.pointValue(), 50);
     });
 
     test('never announcing at all means it never counts, silently', () {
@@ -503,7 +609,8 @@ void main() {
   });
 
   group('Belote/Pilotta live announcement', () {
-    test('fires pilotta on the first of King+Queen of trump played, and '
+    test(
+        'fires pilotta on the first of King+Queen of trump played, and '
         'repilotta on the second — regardless of the announce/reveal flow', () {
       final hand = PilottaHand(
         contract: Contract(
@@ -585,12 +692,15 @@ void main() {
       expect(hand.currentTrick.leader, Seat.north);
       hand.playCard(Seat.north, const PlayingCard(Suit.diamonds, Rank.nine));
       hand.playCard(Seat.east, const PlayingCard(Suit.hearts, Rank.eight));
-      expect(hand.legalPlays(Seat.south), [const PlayingCard(Suit.spades, Rank.queen)]);
+      expect(hand.legalPlays(Seat.south),
+          [const PlayingCard(Suit.spades, Rank.queen)]);
       hand.playCard(Seat.south, const PlayingCard(Suit.spades, Rank.queen));
       expect(hand.lastBeloteAnnouncement, BeloteAnnouncement.repilotta);
     });
 
-    test('playing the King or Queen of trump without holding both is not a Belote call', () {
+    test(
+        'playing the King or Queen of trump without holding both is not a Belote call',
+        () {
       final hand = PilottaHand(
         contract: Contract(
           biddingSeat: Seat.south,

@@ -451,7 +451,7 @@ class _OnlineOpponentSeat extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(top: 2),
                 child: Text(
-                    declarationLabelFromJson(
+                    declarationsLabelFromJsonList(
                         snapshot.revealedDeclarations[seat]!),
                     style: const TextStyle(
                         color: Colors.lightGreenAccent, fontSize: 9)),

@@ -9,8 +9,10 @@ enum ChatEntryKind {
   /// content isn't public yet, only the fact that they announced one.
   declarationAnnounced,
 
-  /// The seat revealed a previously-announced declaration — [declaration]
-  /// carries what it actually was.
+  /// The seat revealed their previously-announced declaration(s) —
+  /// [declarations] carries every one of them (a hand can hold more than
+  /// one; only the best is announced out loud, but all are shown and score
+  /// once revealed).
   declarationRevealed,
 
   /// The seat just played the first of their King+Queen of trump.
@@ -34,17 +36,17 @@ class ChatEntry {
   /// Set only for [ChatEntryKind.chat].
   final String? text;
 
-  /// Set only for [ChatEntryKind.declarationRevealed] — the shape
-  /// `declarationToJson` produces (see `declarationLabelFromJson` in the
-  /// app for rendering it without a pilotta_protocol dependency).
-  final Map<String, dynamic>? declaration;
+  /// Set only for [ChatEntryKind.declarationRevealed] — one or more, each
+  /// the shape `declarationToJson` produces (see `declarationsLabelFromJsonList`
+  /// in the app for rendering them without a pilotta_protocol dependency).
+  final List<Map<String, dynamic>>? declarations;
 
   const ChatEntry({
     required this.id,
     required this.seat,
     required this.kind,
     this.text,
-    this.declaration,
+    this.declarations,
   });
 
   Map<String, dynamic> toJson() => {
@@ -52,7 +54,7 @@ class ChatEntry {
         'seat': seat.name,
         'kind': kind.name,
         if (text != null) 'text': text,
-        if (declaration != null) 'declaration': declaration,
+        if (declarations != null) 'declarations': declarations,
       };
 
   static ChatEntry fromJson(Map<String, dynamic> json) => ChatEntry(
@@ -60,6 +62,7 @@ class ChatEntry {
         seat: Seat.values.byName(json['seat'] as String),
         kind: ChatEntryKind.values.byName(json['kind'] as String),
         text: json['text'] as String?,
-        declaration: json['declaration'] as Map<String, dynamic>?,
+        declarations: (json['declarations'] as List<dynamic>?)
+            ?.cast<Map<String, dynamic>>(),
       );
 }

@@ -7,8 +7,11 @@ import 'package:test/test.dart';
 
 void main() {
   group('Lobby', () {
-    test('players join open seats in order and can start with bots filling the rest', () {
-      final room = PilottaRoom(roomCode: 'AAAA', targetScore: 101, random: Random(1));
+    test(
+        'players join open seats in order and can start with bots filling the rest',
+        () {
+      final room =
+          PilottaRoom(roomCode: 'AAAA', targetScore: 101, random: Random(1));
       final seat = room.join('Πέτρος');
       expect(seat, Seat.south);
       expect(room.seats[Seat.south]!.playerName, 'Πέτρος');
@@ -24,7 +27,8 @@ void main() {
     });
 
     test('a full room rejects a 5th joiner', () {
-      final room = PilottaRoom(roomCode: 'AAAA', targetScore: 101, random: Random(1));
+      final room =
+          PilottaRoom(roomCode: 'AAAA', targetScore: 101, random: Random(1));
       room.join('A');
       room.join('B');
       room.join('C');
@@ -83,7 +87,8 @@ void main() {
           // Try to play a card the human doesn't hold (if it's their turn,
           // this should fail; if not, it should fail for the turn reason).
           final humanHand = room.buildSnapshotFor(human).yourHand;
-          final notInHand = Deck.full().firstWhere((c) => !humanHand.contains(c));
+          final notInHand =
+              Deck.full().firstWhere((c) => !humanHand.contains(c));
           final err = room.handlePlayCard(human, notInHand);
           expect(err, isNotNull);
         }
@@ -96,7 +101,8 @@ void main() {
   group('Snapshot privacy', () {
     test('a viewer only ever sees their own hand', () {
       fakeAsync((async) {
-        final room = PilottaRoom(roomCode: 'DDDD', targetScore: 101, random: Random(5));
+        final room =
+            PilottaRoom(roomCode: 'DDDD', targetScore: 101, random: Random(5));
         room.join('Human');
         room.start();
         async.elapse(const Duration(milliseconds: 50));
@@ -108,7 +114,9 @@ void main() {
         expect(westSnapshot.yourHand, isNotEmpty);
         // The two hands must be disjoint — nobody sees anyone else's cards.
         expect(
-          southSnapshot.yourHand.toSet().intersection(westSnapshot.yourHand.toSet()),
+          southSnapshot.yourHand
+              .toSet()
+              .intersection(westSnapshot.yourHand.toSet()),
           isEmpty,
         );
         room.dispose();
@@ -183,15 +191,18 @@ void main() {
       fail('No seed in range produced a hand with any declaration.');
     }
 
-    test('a human seat can announce during trick 1 and reveal before their '
+    test(
+        'a human seat can announce during trick 1 and reveal before their '
         'trick-2 card, and it counts towards the final score', () {
       fakeAsync((async) {
         final room = roomWithADeclaration();
-        final seat = Seat.values.firstWhere((s) => room.hand!.bestDeclarationOf(s) != null);
+        final seat = Seat.values
+            .firstWhere((s) => room.hand!.bestDeclarationOf(s) != null);
         final expectedPoints = room.hand!.bestDeclarationOf(seat)!.pointValue();
 
         expect(room.handleAnnounceDeclaration(seat), isNull);
-        expect(room.hand!.declarationStateOf(seat), DeclarationAnnounceState.announced);
+        expect(room.hand!.declarationStateOf(seat),
+            DeclarationAnnounceState.announced);
 
         // Play out trick 1 with everyone's first legal card. A completed
         // trick sits on the table for [trickCollectDelay] before the next
@@ -209,7 +220,8 @@ void main() {
           async.elapse(const Duration(milliseconds: 10));
         }
         expect(room.handleRevealDeclaration(seat), isNull);
-        expect(room.hand!.declarationStateOf(seat), DeclarationAnnounceState.revealed);
+        expect(room.hand!.declarationStateOf(seat),
+            DeclarationAnnounceState.revealed);
 
         // Play out the rest of the hand.
         while (room.phase == RoomPhase.playing) {
@@ -219,7 +231,8 @@ void main() {
         }
 
         final result = room.lastHandResult!;
-        expect(result.declarations.bestPerSeat[seat]?.pointValue(), expectedPoints);
+        expect(result.declarations.bestPerSeat[seat]?.pointValue(),
+            expectedPoints);
         room.dispose();
       });
     });
@@ -227,7 +240,8 @@ void main() {
     test('a human seat that forgets to reveal forfeits the declaration', () {
       fakeAsync((async) {
         final room = roomWithADeclaration();
-        final seat = Seat.values.firstWhere((s) => room.hand!.bestDeclarationOf(s) != null);
+        final seat = Seat.values
+            .firstWhere((s) => room.hand!.bestDeclarationOf(s) != null);
 
         expect(room.handleAnnounceDeclaration(seat), isNull);
 
@@ -245,7 +259,8 @@ void main() {
       });
     });
 
-    test('a bot-controlled seat cannot announce or reveal directly — bots '
+    test(
+        'a bot-controlled seat cannot announce or reveal directly — bots '
         'handle their own declarations automatically', () {
       fakeAsync((async) {
         final room = PilottaRoom(
@@ -271,7 +286,8 @@ void main() {
       });
     });
 
-    test('the room house-rule flag is threaded down to actual trick '
+    test(
+        'the room house-rule flag is threaded down to actual trick '
         'legality (mustOvertrumpAllSuits)', () {
       final room = PilottaRoom(
         roomCode: 'JJJJ',
@@ -298,7 +314,9 @@ void main() {
   });
 
   group('Disconnect / reconnect resilience', () {
-    test('a disconnected human seat is played by a bot, and control returns on reconnect', () {
+    test(
+        'a disconnected human seat is played by a bot, and control returns on reconnect',
+        () {
       fakeAsync((async) {
         final room = PilottaRoom(
           roomCode: 'FFFF',
@@ -329,8 +347,11 @@ void main() {
       });
     });
 
-    test('rejoining with the same name reclaims the seat instead of taking a new one', () {
-      final room = PilottaRoom(roomCode: 'GGGG', targetScore: 101, random: Random(11));
+    test(
+        'rejoining with the same name reclaims the seat instead of taking a new one',
+        () {
+      final room =
+          PilottaRoom(roomCode: 'GGGG', targetScore: 101, random: Random(11));
       final human = room.join('Alice')!;
       room.start();
       room.setConnected(human, false);
@@ -349,8 +370,10 @@ void main() {
   });
 
   group('Chat', () {
-    test('sendChat appends a message visible in chatLog, and validates input', () {
-      final room = PilottaRoom(roomCode: 'MMMM', targetScore: 101, random: Random(1));
+    test('sendChat appends a message visible in chatLog, and validates input',
+        () {
+      final room =
+          PilottaRoom(roomCode: 'MMMM', targetScore: 101, random: Random(1));
       final south = room.join('A')!;
       room.join('B');
       room.join('C');
@@ -372,9 +395,11 @@ void main() {
       room.dispose();
     });
 
-    test('announcing/revealing a declaration pushes chat entries, without '
+    test(
+        'announcing/revealing a declaration pushes chat entries, without '
         'leaking its content before reveal', () {
-      final room = PilottaRoom(roomCode: 'OOOO', targetScore: 101, random: Random(1));
+      final room =
+          PilottaRoom(roomCode: 'OOOO', targetScore: 101, random: Random(1));
       for (final name in ['A', 'B', 'C', 'D']) {
         room.join(name);
       }
@@ -439,11 +464,13 @@ void main() {
       expect(room.handleAnnounceDeclaration(Seat.south), isNull);
       expect(room.chatLog.last.kind, ChatEntryKind.declarationAnnounced);
       expect(room.chatLog.last.seat, Seat.south);
-      expect(room.chatLog.last.declaration, isNull);
+      expect(room.chatLog.last.declarations, isNull);
 
       expect(room.handleRevealDeclaration(Seat.south), isNull);
       expect(room.chatLog.last.kind, ChatEntryKind.declarationRevealed);
-      expect(room.chatLog.last.declaration, isNotNull);
+      // South's dealt hand happens to hold two separate declarations here
+      // (hearts J-10-9 and clubs J-10-9-8-7) — both are revealed together.
+      expect(room.chatLog.last.declarations, hasLength(2));
 
       room.dispose();
     });

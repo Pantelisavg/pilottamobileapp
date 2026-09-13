@@ -17,7 +17,8 @@ sealed class ClientMessage {
         return CreateRoomMessage(
           playerName: json['playerName'] as String,
           targetScore: json['targetScore'] as int,
-          mustOvertrumpAllSuits: json['mustOvertrumpAllSuits'] as bool? ?? false,
+          mustOvertrumpAllSuits:
+              json['mustOvertrumpAllSuits'] as bool? ?? false,
         );
       case 'join_room':
         return JoinRoomMessage(
@@ -27,9 +28,11 @@ sealed class ClientMessage {
       case 'start':
         return const StartMessage();
       case 'bid':
-        return BidMessage(auctionCallFromJson(json['call'] as Map<String, dynamic>));
+        return BidMessage(
+            auctionCallFromJson(json['call'] as Map<String, dynamic>));
       case 'play_card':
-        return PlayCardMessage(cardFromJson(json['card'] as Map<String, dynamic>));
+        return PlayCardMessage(
+            cardFromJson(json['card'] as Map<String, dynamic>));
       case 'announce_declaration':
         return const AnnounceDeclarationMessage();
       case 'reveal_declaration':
@@ -91,14 +94,16 @@ class BidMessage extends ClientMessage {
   final AuctionCall call;
   BidMessage(this.call);
   @override
-  Map<String, dynamic> toJson() => {'type': 'bid', 'call': auctionCallToJson(call)};
+  Map<String, dynamic> toJson() =>
+      {'type': 'bid', 'call': auctionCallToJson(call)};
 }
 
 class PlayCardMessage extends ClientMessage {
   final PlayingCard card;
   PlayCardMessage(this.card);
   @override
-  Map<String, dynamic> toJson() => {'type': 'play_card', 'card': cardToJson(card)};
+  Map<String, dynamic> toJson() =>
+      {'type': 'play_card', 'card': cardToJson(card)};
 }
 
 /// Announces the sender's best declaration during trick 1 — see
@@ -189,7 +194,8 @@ class SeatInfo {
   final String? playerName;
   final bool isBot;
   final bool connected;
-  const SeatInfo({this.playerName, required this.isBot, required this.connected});
+  const SeatInfo(
+      {this.playerName, required this.isBot, required this.connected});
 
   Map<String, dynamic> toJson() =>
       {'playerName': playerName, 'isBot': isBot, 'connected': connected};
@@ -238,8 +244,11 @@ class RoomSnapshotMessage extends ServerMessage {
 
   /// The actual declaration content for every seat who has revealed theirs
   /// — safe to show the whole table since revealing means showing the
-  /// cards. Seats who haven't revealed (or have nothing) are absent.
-  final Map<Seat, Map<String, dynamic>> revealedDeclarations;
+  /// cards. Seats who haven't revealed (or have nothing) are absent. A seat
+  /// can hold more than one declaration at once (only the best is
+  /// announced out loud, but all of them are shown and score once
+  /// revealed), hence a list.
+  final Map<Seat, List<Map<String, dynamic>>> revealedDeclarations;
 
   /// [yourSeat]'s own best declaration this hand, if any — always visible
   /// to them regardless of announce/reveal state, so their UI can offer to
@@ -310,7 +319,9 @@ class RoomSnapshotMessage extends ServerMessage {
         'lastCompletedTrick': lastCompletedTrick,
         'lastCompletedTrickWinner': lastCompletedTrickWinner?.name,
         'matchHistory': matchHistory,
-        'declarationStates': {for (final e in declarationStates.entries) e.key.name: e.value},
+        'declarationStates': {
+          for (final e in declarationStates.entries) e.key.name: e.value
+        },
         'revealedDeclarations': {
           for (final e in revealedDeclarations.entries) e.key.name: e.value,
         },
@@ -331,37 +342,52 @@ class RoomSnapshotMessage extends ServerMessage {
       phase: RoomPhase.values.byName(json['phase'] as String),
       seats: {
         for (final entry in (json['seats'] as Map<String, dynamic>).entries)
-          Seat.values.byName(entry.key): SeatInfo.fromJson(entry.value as Map<String, dynamic>),
+          Seat.values.byName(entry.key):
+              SeatInfo.fromJson(entry.value as Map<String, dynamic>),
       },
       targetScore: json['targetScore'] as int,
       mustOvertrumpAllSuits: json['mustOvertrumpAllSuits'] as bool? ?? false,
       totals: (json['totals'] as Map<String, dynamic>).cast<String, int>(),
-      dealer: (json['dealer'] as String?) == null ? null : Seat.values.byName(json['dealer'] as String),
-      auctionCalls: (json['auctionCalls'] as List<dynamic>?)?.cast<Map<String, dynamic>>(),
-      seatToAct:
-          (json['seatToAct'] as String?) == null ? null : Seat.values.byName(json['seatToAct'] as String),
+      dealer: (json['dealer'] as String?) == null
+          ? null
+          : Seat.values.byName(json['dealer'] as String),
+      auctionCalls: (json['auctionCalls'] as List<dynamic>?)
+          ?.cast<Map<String, dynamic>>(),
+      seatToAct: (json['seatToAct'] as String?) == null
+          ? null
+          : Seat.values.byName(json['seatToAct'] as String),
       contract: json['contract'] as Map<String, dynamic>?,
       yourHand: cardsFromJson(json['yourHand'] as List<dynamic>),
       handSizes: {
         for (final entry in (json['handSizes'] as Map<String, dynamic>).entries)
           Seat.values.byName(entry.key): entry.value as int,
       },
-      currentTrick: (json['currentTrick'] as List<dynamic>?)?.cast<Map<String, dynamic>>(),
-      trickLeader:
-          (json['trickLeader'] as String?) == null ? null : Seat.values.byName(json['trickLeader'] as String),
-      lastCompletedTrick: (json['lastCompletedTrick'] as List<dynamic>?)?.cast<Map<String, dynamic>>(),
-      lastCompletedTrickWinner: (json['lastCompletedTrickWinner'] as String?) == null
+      currentTrick: (json['currentTrick'] as List<dynamic>?)
+          ?.cast<Map<String, dynamic>>(),
+      trickLeader: (json['trickLeader'] as String?) == null
           ? null
-          : Seat.values.byName(json['lastCompletedTrickWinner'] as String),
+          : Seat.values.byName(json['trickLeader'] as String),
+      lastCompletedTrick: (json['lastCompletedTrick'] as List<dynamic>?)
+          ?.cast<Map<String, dynamic>>(),
+      lastCompletedTrickWinner:
+          (json['lastCompletedTrickWinner'] as String?) == null
+              ? null
+              : Seat.values.byName(json['lastCompletedTrickWinner'] as String),
       matchHistory: (json['matchHistory'] as List<dynamic>? ?? const [])
           .cast<Map<String, dynamic>>(),
       declarationStates: {
-        for (final entry in (json['declarationStates'] as Map<String, dynamic>? ?? const {}).entries)
+        for (final entry
+            in (json['declarationStates'] as Map<String, dynamic>? ?? const {})
+                .entries)
           Seat.values.byName(entry.key): entry.value as String,
       },
       revealedDeclarations: {
-        for (final entry in (json['revealedDeclarations'] as Map<String, dynamic>? ?? const {}).entries)
-          Seat.values.byName(entry.key): entry.value as Map<String, dynamic>,
+        for (final entry
+            in (json['revealedDeclarations'] as Map<String, dynamic>? ??
+                    const {})
+                .entries)
+          Seat.values.byName(entry.key):
+              (entry.value as List<dynamic>).cast<Map<String, dynamic>>(),
       },
       yourBestDeclaration: json['yourBestDeclaration'] as Map<String, dynamic>?,
       canAnnounceDeclaration: json['canAnnounceDeclaration'] as bool? ?? false,
@@ -369,7 +395,8 @@ class RoomSnapshotMessage extends ServerMessage {
       banner: json['banner'] as String?,
       lastHandResult: json['lastHandResult'] as Map<String, dynamic>?,
       readyForNextHand: {
-        for (final s in (json['readyForNextHand'] as List<dynamic>)) Seat.values.byName(s as String),
+        for (final s in (json['readyForNextHand'] as List<dynamic>))
+          Seat.values.byName(s as String),
       },
       winnerTeam: json['winnerTeam'] as String?,
       chatLog: (json['chatLog'] as List<dynamic>? ?? const [])

@@ -126,7 +126,8 @@ class _GameView extends StatelessWidget {
               _HandSummaryOverlay(controller: controller),
             if (controller.phase == RoomPhase.matchOver)
               _MatchOverOverlay(controller: controller),
-            ChatFlashBanner(chatLog: controller.chatLog, viewerSeat: controller.humanSeat),
+            ChatFlashBanner(
+                chatLog: controller.chatLog, viewerSeat: controller.humanSeat),
           ],
         ),
       ),
@@ -287,7 +288,7 @@ class _OpponentSeat extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(top: 2),
               child: Text(
-                  declarationLabel(controller.hand!.bestDeclarationOf(seat)!),
+                  declarationsLabel(controller.hand!.allDeclarationsOf(seat)),
                   style: const TextStyle(
                       color: Colors.lightGreenAccent, fontSize: 9)),
             ),
@@ -485,7 +486,8 @@ class _HumanHand extends StatelessWidget {
         legal: legal,
         isMyTurn: isMyTurn,
         cardScale: cardScale,
-        reasonFor: (card) => trick != null ? illegalPlayReason(trick, cards, card) : null,
+        reasonFor: (card) =>
+            trick != null ? illegalPlayReason(trick, cards, card) : null,
         onTap: (card) {
           playTapSound(context.read<AppSettings>());
           controller.playCard(card);

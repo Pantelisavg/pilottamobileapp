@@ -46,7 +46,8 @@ AuctionCall auctionCallFromJson(Map<String, dynamic> json) {
     case 'pass':
       return PassCall(seat);
     case 'bid':
-      return SuitBidCall(seat, Suit.values.byName(json['suit'] as String), json['value'] as int);
+      return SuitBidCall(seat, Suit.values.byName(json['suit'] as String),
+          json['value'] as int);
     case 'capot':
       return CapotCall(seat, Suit.values.byName(json['suit'] as String));
     case 'double':
@@ -71,7 +72,8 @@ Contract contractFromJson(Map<String, dynamic> json) => Contract(
       trumpSuit: Suit.values.byName(json['trumpSuit'] as String),
       value: json['value'] as int,
       isCapot: json['isCapot'] as bool,
-      multiplier: ContractMultiplier.values.byName(json['multiplier'] as String),
+      multiplier:
+          ContractMultiplier.values.byName(json['multiplier'] as String),
     );
 
 Map<String, dynamic> declarationToJson(Declaration d) => {
@@ -86,8 +88,14 @@ Map<String, dynamic> declarationOutcomeToJson(DeclarationOutcome o) => {
         for (final e in o.bestPerSeat.entries)
           if (e.value != null) e.key.name: declarationToJson(e.value!),
       },
+      'allPerSeat': {
+        for (final e in o.allPerSeat.entries)
+          if (e.value.isNotEmpty)
+            e.key.name: e.value.map(declarationToJson).toList(),
+      },
       'forfeitedPerSeat': {
-        for (final e in o.forfeitedPerSeat.entries) e.key.name: declarationToJson(e.value),
+        for (final e in o.forfeitedPerSeat.entries)
+          e.key.name: declarationToJson(e.value),
       },
       'winningTeam': o.winningTeam?.name,
       'winningTeamPoints': o.winningTeamPoints,
@@ -96,10 +104,15 @@ Map<String, dynamic> declarationOutcomeToJson(DeclarationOutcome o) => {
 
 Map<String, dynamic> handResultToJson(HandResult r) => {
       'contract': contractToJson(r.contract),
-      'trickPoints': {for (final e in r.trickPoints.entries) e.key.name: e.value},
+      'trickPoints': {
+        for (final e in r.trickPoints.entries) e.key.name: e.value
+      },
       'allTricksTeam': r.allTricksTeam?.name,
       'declarations': declarationOutcomeToJson(r.declarations),
       'contractMade': r.contractMade,
       'rawTotals': {for (final e in r.rawTotals.entries) e.key.name: e.value},
-      'rounded': {'northSouth': r.rounded.northSouth, 'eastWest': r.rounded.eastWest},
+      'rounded': {
+        'northSouth': r.rounded.northSouth,
+        'eastWest': r.rounded.eastWest
+      },
     };

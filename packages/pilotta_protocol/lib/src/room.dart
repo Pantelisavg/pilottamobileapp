@@ -50,7 +50,8 @@ class PilottaRoom {
 
   RoomPhase phase = RoomPhase.lobby;
   final Map<Seat, SeatInfo> seats = {
-    for (final s in Seat.values) s: const SeatInfo(isBot: false, connected: false),
+    for (final s in Seat.values)
+      s: const SeatInfo(isBot: false, connected: false),
   };
 
   Auction? auction;
@@ -107,13 +108,14 @@ class PilottaRoom {
 
   // ------------------------------------------------------------------ chat
 
-  void _pushChat(Seat seat, ChatEntryKind kind, {String? text, Map<String, dynamic>? declaration}) {
+  void _pushChat(Seat seat, ChatEntryKind kind,
+      {String? text, List<Map<String, dynamic>>? declarations}) {
     _chatLog.add(ChatEntry(
       id: _nextChatId++,
       seat: seat,
       kind: kind,
       text: text,
-      declaration: declaration,
+      declarations: declarations,
     ));
     if (_chatLog.length > _kMaxChatLog) _chatLog.removeAt(0);
   }
@@ -147,7 +149,8 @@ class PilottaRoom {
     for (final seat in Seat.values) {
       final info = seats[seat]!;
       if (!info.isBot && info.playerName == null) {
-        seats[seat] = SeatInfo(playerName: playerName, isBot: false, connected: true);
+        seats[seat] =
+            SeatInfo(playerName: playerName, isBot: false, connected: true);
         _notify();
         return seat;
       }
@@ -158,7 +161,8 @@ class PilottaRoom {
   void setConnected(Seat seat, bool connected) {
     final info = seats[seat]!;
     if (info.playerName == null) return;
-    seats[seat] = SeatInfo(playerName: info.playerName, isBot: false, connected: connected);
+    seats[seat] = SeatInfo(
+        playerName: info.playerName, isBot: false, connected: connected);
     // Disconnecting hands control to the bot immediately if it was this
     // seat's turn; reconnecting is a no-op here (isBotControlled is now
     // false again, so these simply won't schedule anything).
@@ -227,7 +231,8 @@ class PilottaRoom {
     _pendingBotMove?.cancel();
     _pendingBotMove = Timer(botBidDelay, () {
       if (_disposed || auction != a || a.isComplete) return;
-      final call = _bot.decideBid(a, a.seatToAct, _originalHands![a.seatToAct]!);
+      final call =
+          _bot.decideBid(a, a.seatToAct, _originalHands![a.seatToAct]!);
       a.apply(call);
       _notify();
       _maybeRunBotBidding();
@@ -236,7 +241,9 @@ class PilottaRoom {
 
   /// Returns an error message if [call] is rejected, or null on success.
   String? handleBid(Seat seat, AuctionCall call) {
-    if (phase != RoomPhase.bidding || auction == null) return 'Δεν τρέχει δημοπρασία.';
+    if (phase != RoomPhase.bidding || auction == null) {
+      return 'Δεν τρέχει δημοπρασία.';
+    }
     if (isBotControlled(seat)) return 'Η θέση ελέγχεται από bot.';
     if (auction!.seatToAct != seat) return 'Δεν είναι η σειρά σου.';
     if (call.seat != seat) return 'Μη έγκυρη δήλωση.';
@@ -293,7 +300,8 @@ class PilottaRoom {
       if (h.canRevealDeclaration(seat)) {
         h.revealDeclaration(seat);
         _pushChat(seat, ChatEntryKind.declarationRevealed,
-            declaration: declarationToJson(h.bestDeclarationOf(seat)!));
+            declarations:
+                h.allDeclarationsOf(seat).map(declarationToJson).toList());
       }
     }
   }
@@ -302,7 +310,9 @@ class PilottaRoom {
   /// now, or null on success.
   String? handleAnnounceDeclaration(Seat seat) {
     final h = hand;
-    if (phase != RoomPhase.playing || h == null) return 'Δεν παίζεται φύλλο τώρα.';
+    if (phase != RoomPhase.playing || h == null) {
+      return 'Δεν παίζεται φύλλο τώρα.';
+    }
     if (isBotControlled(seat)) return 'Η θέση ελέγχεται από bot.';
     if (!h.canAnnounceDeclaration(seat)) return 'Δεν μπορείς να δηλώσεις τώρα.';
     h.announceDeclaration(seat);
@@ -315,12 +325,17 @@ class PilottaRoom {
   /// right now, or null on success.
   String? handleRevealDeclaration(Seat seat) {
     final h = hand;
-    if (phase != RoomPhase.playing || h == null) return 'Δεν παίζεται φύλλο τώρα.';
+    if (phase != RoomPhase.playing || h == null) {
+      return 'Δεν παίζεται φύλλο τώρα.';
+    }
     if (isBotControlled(seat)) return 'Η θέση ελέγχεται από bot.';
-    if (!h.canRevealDeclaration(seat)) return 'Δεν μπορείς να αποκαλύψεις τώρα.';
+    if (!h.canRevealDeclaration(seat)) {
+      return 'Δεν μπορείς να αποκαλύψεις τώρα.';
+    }
     h.revealDeclaration(seat);
     _pushChat(seat, ChatEntryKind.declarationRevealed,
-        declaration: declarationToJson(h.bestDeclarationOf(seat)!));
+        declarations:
+            h.allDeclarationsOf(seat).map(declarationToJson).toList());
     _notify();
     return null;
   }
@@ -343,7 +358,8 @@ class PilottaRoom {
     _pendingBotMove?.cancel();
     _pendingBotMove = Timer(botPlayDelay, () {
       if (_disposed || hand != h || h.isHandComplete) return;
-      final card = _bot.decidePlay(h.currentTrick, h.handOf(toAct), h.contract.trumpSuit);
+      final card = _bot.decidePlay(
+          h.currentTrick, h.handOf(toAct), h.contract.trumpSuit);
       h.playCard(toAct, card);
       _recordBeloteIfAny(toAct, h);
       _notify();
@@ -393,9 +409,13 @@ class PilottaRoom {
 
   /// Returns an error message if the play is rejected, or null on success.
   String? handlePlayCard(Seat seat, PlayingCard card) {
-    if (phase != RoomPhase.playing || hand == null) return 'Δεν παίζεται φύλλο τώρα.';
+    if (phase != RoomPhase.playing || hand == null) {
+      return 'Δεν παίζεται φύλλο τώρα.';
+    }
     if (isBotControlled(seat)) return 'Η θέση ελέγχεται από bot.';
-    if (hand!.currentTrick.isComplete) return 'Η μπάζα μόλις ολοκληρώθηκε — περίμενε λίγο.';
+    if (hand!.currentTrick.isComplete) {
+      return 'Η μπάζα μόλις ολοκληρώθηκε — περίμενε λίγο.';
+    }
     if (hand!.currentTrick.seatToPlay != seat) return 'Δεν είναι η σειρά σου.';
     if (!hand!.legalPlays(seat).contains(card)) return 'Μη έγκυρο φύλλο.';
     hand!.playCard(seat, card);
@@ -482,8 +502,9 @@ class PilottaRoom {
         RoomPhase.bidding => auction?.seatToAct,
         // null while a just-finished trick is still on the table (see
         // trickCollectDelay) — nobody's turn during that pause.
-        RoomPhase.playing =>
-          (h != null && !h.currentTrick.isComplete) ? h.currentTrick.seatToPlay : null,
+        RoomPhase.playing => (h != null && !h.currentTrick.isComplete)
+            ? h.currentTrick.seatToPlay
+            : null,
         _ => null,
       },
       contract: h != null ? contractToJson(h.contract) : null,
@@ -498,18 +519,24 @@ class PilottaRoom {
           : h.completedTricks.last.played
               .map((e) => {'seat': e.seat.name, 'card': cardToJson(e.card)})
               .toList(),
-      lastCompletedTrickWinner:
-          h == null || h.completedTricks.isEmpty ? null : h.completedTricks.last.winner,
+      lastCompletedTrickWinner: h == null || h.completedTricks.isEmpty
+          ? null
+          : h.completedTricks.last.winner,
       matchHistory: scoreboard.history.map(handResultToJson).toList(),
       declarationStates: h == null
           ? const {}
-          : {for (final seat in Seat.values) seat: h.declarationStateOf(seat).name},
+          : {
+              for (final seat in Seat.values)
+                seat: h.declarationStateOf(seat).name
+            },
       revealedDeclarations: h == null
           ? const {}
           : {
               for (final seat in Seat.values)
-                if (h.declarationStateOf(seat) == DeclarationAnnounceState.revealed)
-                  seat: declarationToJson(h.bestDeclarationOf(seat)!),
+                if (h.declarationStateOf(seat) ==
+                    DeclarationAnnounceState.revealed)
+                  seat:
+                      h.allDeclarationsOf(seat).map(declarationToJson).toList(),
             },
       yourBestDeclaration: h != null && h.bestDeclarationOf(viewer) != null
           ? declarationToJson(h.bestDeclarationOf(viewer)!)
@@ -517,7 +544,8 @@ class PilottaRoom {
       canAnnounceDeclaration: h?.canAnnounceDeclaration(viewer) ?? false,
       canRevealDeclaration: h?.canRevealDeclaration(viewer) ?? false,
       banner: banner,
-      lastHandResult: lastHandResult != null ? handResultToJson(lastHandResult!) : null,
+      lastHandResult:
+          lastHandResult != null ? handResultToJson(lastHandResult!) : null,
       readyForNextHand: Set.of(readyForNextHand),
       winnerTeam: scoreboard.winner?.name,
       chatLog: List.unmodifiable(_chatLog),

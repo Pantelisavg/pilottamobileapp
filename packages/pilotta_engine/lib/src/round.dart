@@ -40,6 +40,12 @@ class DeclarationOutcome {
   /// forfeited one by not revealing in time).
   final Map<Seat, Declaration?> bestPerSeat;
 
+  /// Every declaration each successfully-revealed seat actually holds
+  /// (empty for every other seat) — a seat can hold more than one, and all
+  /// of them count once revealed; see [PilottaHand.allDeclarationsOf]. This
+  /// is what [winningTeamPoints] is actually the sum of.
+  final Map<Seat, List<Declaration>> allPerSeat;
+
   /// Declarations that were announced but never revealed in time — kept
   /// purely for UI/explanatory purposes (e.g. "North forgot to reveal a
   /// sequence"); these never counted towards scoring.
@@ -51,6 +57,7 @@ class DeclarationOutcome {
 
   const DeclarationOutcome({
     required this.bestPerSeat,
+    required this.allPerSeat,
     required this.forfeitedPerSeat,
     required this.winningTeam,
     required this.winningTeamPoints,
@@ -113,9 +120,12 @@ class PilottaHand {
     required Seat firstLeader,
     this.mustOvertrumpAllSuits = false,
   })  : _originalHands = {
-          for (final e in initialHands.entries) e.key: List.unmodifiable(List.of(e.value)),
+          for (final e in initialHands.entries)
+            e.key: List.unmodifiable(List.of(e.value)),
         },
-        _hands = {for (final e in initialHands.entries) e.key: List.of(e.value)},
+        _hands = {
+          for (final e in initialHands.entries) e.key: List.of(e.value)
+        },
         _nextLeader = firstLeader {
     for (final hand in _hands.values) {
       if (hand.length != 8) {
@@ -138,12 +148,24 @@ class PilottaHand {
 
   /// The best declaration [seat] could announce, based on their original
   /// hand — independent of whether they've actually announced/revealed it.
+  /// This is the one value spoken out loud during the announce step, and
+  /// the one compared across the table to decide who wins the right to
+  /// score — but a hand can hold more than one non-overlapping declaration
+  /// (e.g. a 4-run in one suit and a separate 3-run in another), and *all*
+  /// of them are shown and score once revealed — see [allDeclarationsOf].
   Declaration? bestDeclarationOf(Seat seat) =>
       bestDeclaration(seat, _originalHands[seat]!, contract.trumpSuit);
 
+  /// Every declaration [seat]'s original hand holds — what actually gets
+  /// shown (and scores) once they reveal, as opposed to [bestDeclarationOf]
+  /// which is only the single headline value they announce.
+  List<Declaration> allDeclarationsOf(Seat seat) =>
+      findDeclarations(seat, _originalHands[seat]!);
+
   /// Where [seat] currently stands in the announce/reveal flow for their
   /// (non-Pilotta) declaration, if any.
-  DeclarationAnnounceState declarationStateOf(Seat seat) => _declarationState[seat]!;
+  DeclarationAnnounceState declarationStateOf(Seat seat) =>
+      _declarationState[seat]!;
 
   Trick get currentTrick => _currentTrick!;
 
@@ -236,8 +258,9 @@ class PilottaHand {
         holdsBelote(seat)) {
       final count = (_beloteCardsPlayed[seat] ?? 0) + 1;
       _beloteCardsPlayed[seat] = count;
-      lastBeloteAnnouncement =
-          count == 1 ? BeloteAnnouncement.pilotta : BeloteAnnouncement.repilotta;
+      lastBeloteAnnouncement = count == 1
+          ? BeloteAnnouncement.pilotta
+          : BeloteAnnouncement.repilotta;
     }
 
     if (currentTrick.isComplete) {
@@ -274,13 +297,16 @@ class PilottaHand {
 
   DeclarationOutcome _resolveDeclarations() {
     final bestPerSeat = <Seat, Declaration?>{};
+    final allPerSeat = <Seat, List<Declaration>>{};
     final forfeitedPerSeat = <Seat, Declaration>{};
     for (final seat in Seat.values) {
       final state = _declarationState[seat];
       if (state == DeclarationAnnounceState.revealed) {
         bestPerSeat[seat] = bestDeclarationOf(seat);
+        allPerSeat[seat] = allDeclarationsOf(seat);
       } else {
         bestPerSeat[seat] = null;
+        allPerSeat[seat] = const [];
         if (state == DeclarationAnnounceState.forfeited) {
           final forfeited = bestDeclarationOf(seat);
           if (forfeited != null) forfeitedPerSeat[seat] = forfeited;
@@ -291,7 +317,8 @@ class PilottaHand {
     Declaration? overallBest;
     for (final decl in bestPerSeat.values) {
       if (decl == null) continue;
-      if (overallBest == null || decl.compareTo(overallBest, contract.trumpSuit) > 0) {
+      if (overallBest == null ||
+          decl.compareTo(overallBest, contract.trumpSuit) > 0) {
         overallBest = decl;
       }
     }
@@ -309,9 +336,14 @@ class PilottaHand {
 
       if (!tiedAcrossTeams) {
         winningTeam = overallBest.seat.team;
-        winningPoints = bestPerSeat.values
-            .where((d) => d != null && d.seat.team == winningTeam)
-            .fold(0, (sum, d) => sum + d!.pointValue());
+        // Every declaration each winning-team seat holds counts, not just
+        // each seat's single best (headline) one — see [allDeclarationsOf].
+        winningPoints = allPerSeat.entries
+            .where((e) => e.key.team == winningTeam)
+            .fold(
+                0,
+                (sum, e) =>
+                    sum + e.value.fold(0, (s, d) => s + d.pointValue()));
       }
     }
 
@@ -330,6 +362,7 @@ class PilottaHand {
 
     return DeclarationOutcome(
       bestPerSeat: bestPerSeat,
+      allPerSeat: allPerSeat,
       forfeitedPerSeat: forfeitedPerSeat,
       winningTeam: winningTeam,
       winningTeamPoints: winningPoints,
@@ -360,15 +393,16 @@ class PilottaHand {
             ? kAllTricksCapotPoints
             : allTricksTeam != null
                 ? 0
-                : _trickPointsWon[team]! +
-                    (_lastTrickTeam == team ? 10 : 0),
+                : _trickPointsWon[team]! + (_lastTrickTeam == team ? 10 : 0),
     };
 
     final declarations = _resolveDeclarations();
 
     int teamShare(Team team) {
       var points = trickPoints[team]!;
-      if (declarations.winningTeam == team) points += declarations.winningTeamPoints;
+      if (declarations.winningTeam == team) {
+        points += declarations.winningTeamPoints;
+      }
       if (declarations.beloteSeat?.team == team) points += kBelotePoints;
       return points;
     }
