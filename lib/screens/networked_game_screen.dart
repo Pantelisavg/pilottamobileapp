@@ -28,6 +28,19 @@ List<ScoreRow> _buildOnlineScoreRows(
   final myTeamKey =
       viewerSeat.team == Team.northSouth ? 'northSouth' : 'eastWest';
   final theirTeamKey = myTeamKey == 'northSouth' ? 'eastWest' : 'northSouth';
+
+  int declarationPointsOf(Map<String, dynamic> entry, String teamKey) {
+    final d = entry['declarations'] as Map<String, dynamic>;
+    var points =
+        d['winningTeam'] == teamKey ? d['winningTeamPoints'] as int : 0;
+    final beloteSeat = d['beloteSeat'] as String?;
+    if (beloteSeat != null &&
+        Seat.values.byName(beloteSeat).team.name == teamKey) {
+      points += kBelotePoints;
+    }
+    return points ~/ 10;
+  }
+
   return [
     for (var i = 0; i < history.length; i++)
       () {
@@ -45,6 +58,8 @@ List<ScoreRow> _buildOnlineScoreRows(
           contractMade: entry['contractMade'] as bool,
           roundedMine: rounded[myTeamKey] as int,
           roundedTheirs: rounded[theirTeamKey] as int,
+          declarationPointsMine: declarationPointsOf(entry, myTeamKey),
+          declarationPointsTheirs: declarationPointsOf(entry, theirTeamKey),
         );
       }(),
   ];

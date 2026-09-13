@@ -23,6 +23,13 @@ import '../widgets/suit_icon.dart';
 
 List<ScoreRow> _buildLocalScoreRows(List<HandResult> history, Seat viewerSeat) {
   final ourTeam = viewerSeat.team;
+  int declarationPointsOf(HandResult r, Team team) {
+    final d = r.declarations;
+    var points = d.winningTeam == team ? d.winningTeamPoints : 0;
+    if (d.beloteSeat?.team == team) points += kBelotePoints;
+    return points ~/ 10;
+  }
+
   return [
     for (var i = 0; i < history.length; i++)
       ScoreRow(
@@ -39,6 +46,9 @@ List<ScoreRow> _buildLocalScoreRows(List<HandResult> history, Seat viewerSeat) {
         roundedTheirs: ourTeam == Team.northSouth
             ? history[i].rounded.eastWest
             : history[i].rounded.northSouth,
+        declarationPointsMine: declarationPointsOf(history[i], ourTeam),
+        declarationPointsTheirs:
+            declarationPointsOf(history[i], ourTeam.opponent),
       ),
   ];
 }
