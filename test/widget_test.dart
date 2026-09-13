@@ -1,8 +1,8 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pilotta/main.dart';
 import 'package:pilotta/screens/local_game_screen.dart';
 import 'package:pilotta/settings/app_settings.dart';
+import 'package:pilotta/widgets/fanned_hand.dart';
 import 'package:pilotta/widgets/playing_card_widget.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -30,7 +30,7 @@ void main() {
 
     expect(find.byType(LocalGameScreen), findsOneWidget);
     final humanCards = find.descendant(
-      of: find.byType(SingleChildScrollView),
+      of: find.byType(FannedHand),
       matching: find.byType(PlayingCardWidget),
     );
     expect(tester.widgetList(humanCards).length, 8);

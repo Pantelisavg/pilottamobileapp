@@ -47,6 +47,8 @@ class LocalGameController extends ChangeNotifier {
 
   List<PlayingCard> handOf(Seat seat) => _room.handOf(seat);
 
+  bool isBotControlled(Seat seat) => _room.isBotControlled(seat);
+
   bool get isHumanTurnToBid =>
       phase == RoomPhase.bidding && auction != null && auction!.seatToAct == humanSeat && !auction!.isComplete;
 

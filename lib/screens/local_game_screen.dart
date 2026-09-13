@@ -9,9 +9,11 @@ import '../settings/sound.dart';
 import '../widgets/auction_call_label.dart';
 import '../widgets/bidding_panel.dart';
 import '../widgets/declaration_label.dart';
-import '../widgets/hand_card.dart';
+import '../widgets/hand_sort.dart';
 import '../widgets/illegal_reason.dart';
+import '../widgets/fanned_hand.dart';
 import '../widgets/last_trick_dialog.dart';
+import '../widgets/player_avatar.dart';
 import '../widgets/playing_card_widget.dart';
 import '../widgets/scoreboard_sheet.dart';
 import '../widgets/seat_layout.dart';
@@ -250,19 +252,12 @@ class _OpponentSeat extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: isActive ? Colors.amber.shade700 : Colors.black38,
-              borderRadius: BorderRadius.circular(12),
-              border: isPartner
-                  ? Border.all(color: Colors.lightGreenAccent, width: 1.5)
-                  : null,
-            ),
-            child: Text(
-              '${seatLabelRelativeTo(seat, controller.humanSeat)} · $cardCount',
-              style: const TextStyle(color: Colors.white, fontSize: 11),
-            ),
+          PlayerAvatar(
+            label: seatLabelRelativeTo(seat, controller.humanSeat),
+            cardCount: cardCount,
+            isActive: isActive,
+            isPartner: isPartner,
+            isBot: controller.isBotControlled(seat),
           ),
           if (declState == DeclarationAnnounceState.announced)
             const Padding(
@@ -280,14 +275,14 @@ class _OpponentSeat extends StatelessWidget {
             ),
           const SizedBox(height: 4),
           SizedBox(
-            height: 34,
-            width: 70,
+            height: 46,
+            width: 92,
             child: Stack(
               children: [
                 for (var i = 0; i < cardCount; i++)
                   Positioned(
-                    left: i * 7.0,
-                    child: const PlayingCardWidget(faceUp: false, width: 22),
+                    left: i * 9.0,
+                    child: const PlayingCardWidget(faceUp: false, width: 30),
                   ),
               ],
             ),
@@ -311,8 +306,8 @@ class _TrickArea extends StatelessWidget {
     final cardScale = context.watch<AppSettings>().cardScale;
 
     return SizedBox(
-      width: 220,
-      height: 200,
+      width: 260,
+      height: 240,
       child: Stack(
         children: [
           for (final seat in Seat.values)
@@ -320,7 +315,7 @@ class _TrickArea extends StatelessWidget {
               Align(
                 alignment: seatAlignmentRelativeTo(seat, controller.humanSeat),
                 child: PlayingCardWidget(
-                    card: played[seat], width: 52 * cardScale),
+                    card: played[seat], width: 68 * cardScale),
               ),
         ],
       ),
@@ -458,41 +453,21 @@ class _HumanHand extends StatelessWidget {
     final trick = controller.hand?.currentTrick;
     final cardScale = context.watch<AppSettings>().cardScale;
 
-    final sorted = [...cards]..sort((a, b) {
-        final suitDiff = a.suit.index.compareTo(b.suit.index);
-        if (suitDiff != 0) return suitDiff;
-        return plainOrderHighToLow
-            .indexOf(a.rank)
-            .compareTo(plainOrderHighToLow.indexOf(b.rank));
-      });
+    final sorted = sortedForHand(cards);
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
       color: const Color(0xFF082A20),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            for (final card in sorted)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 2),
-                child: buildHandCard(
-                  card: card,
-                  selectable: isMyTurn && legal.contains(card),
-                  dimmed: isMyTurn && !legal.contains(card),
-                  reason: isMyTurn && !legal.contains(card) && trick != null
-                      ? illegalPlayReason(trick, cards, card)
-                      : null,
-                  onTap: () {
-                    playTapSound(context.read<AppSettings>());
-                    controller.playCard(card);
-                  },
-                  width: 48 * cardScale,
-                ),
-              ),
-          ],
-        ),
+      child: FannedHand(
+        cards: sorted,
+        legal: legal,
+        isMyTurn: isMyTurn,
+        cardScale: cardScale,
+        reasonFor: (card) => trick != null ? illegalPlayReason(trick, cards, card) : null,
+        onTap: (card) {
+          playTapSound(context.read<AppSettings>());
+          controller.playCard(card);
+        },
       ),
     );
   }

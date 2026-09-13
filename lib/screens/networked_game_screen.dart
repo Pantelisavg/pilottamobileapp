@@ -10,9 +10,11 @@ import '../settings/sound.dart';
 import '../widgets/auction_call_label.dart';
 import '../widgets/bidding_panel.dart';
 import '../widgets/declaration_label.dart';
-import '../widgets/hand_card.dart';
+import '../widgets/fanned_hand.dart';
+import '../widgets/hand_sort.dart';
 import '../widgets/illegal_reason.dart';
 import '../widgets/last_trick_dialog.dart';
+import '../widgets/player_avatar.dart';
 import '../widgets/playing_card_widget.dart';
 import '../widgets/scoreboard_sheet.dart';
 import '../widgets/seat_layout.dart';
@@ -398,37 +400,22 @@ class _OnlineOpponentSeat extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: isActive ? Colors.amber.shade700 : Colors.black38,
-                  borderRadius: BorderRadius.circular(12),
-                  border: isPartner
-                      ? Border.all(color: Colors.lightGreenAccent, width: 1.5)
-                      : null,
-                ),
-                child: Text(
-                  '${seatLabelRelativeTo(seat, controller.mySeat!)}'
-                  '${info.isBot ? " 🤖" : info.connected ? "" : " ⚠"}'
-                  ' · $cardCount',
-                  style: const TextStyle(color: Colors.white, fontSize: 11),
-                ),
-              ),
-              // A purely cosmetic pace cue — nothing auto-plays if it runs
-              // out, there is no server-side turn timeout.
-              if (isActive && !info.isBot && info.connected) ...[
-                const SizedBox(width: 4),
-                TurnTimerRing(
-                  key: ValueKey(
-                      '${snapshot.phase.name}|${snapshot.seatToAct?.name}'),
-                  active: true,
-                ),
-              ],
-            ],
+          PlayerAvatar(
+            label: seatLabelRelativeTo(seat, controller.mySeat!),
+            cardCount: cardCount,
+            isActive: isActive,
+            isPartner: isPartner,
+            isBot: info.isBot,
+            disconnected: !info.isBot && !info.connected,
+            // A purely cosmetic pace cue — nothing auto-plays if it runs
+            // out, there is no server-side turn timeout.
+            timerOverlay: isActive && !info.isBot && info.connected
+                ? TurnTimerRing(
+                    key: ValueKey('${snapshot.phase.name}|${snapshot.seatToAct?.name}'),
+                    active: true,
+                    size: 66,
+                  )
+                : null,
           ),
           if (declState == DeclarationAnnounceState.announced.name)
             const Padding(
@@ -447,14 +434,14 @@ class _OnlineOpponentSeat extends StatelessWidget {
             ),
           const SizedBox(height: 4),
           SizedBox(
-            height: 34,
-            width: 70,
+            height: 46,
+            width: 92,
             child: Stack(
               children: [
                 for (var i = 0; i < cardCount; i++)
                   Positioned(
-                    left: i * 7.0,
-                    child: const PlayingCardWidget(faceUp: false, width: 22),
+                    left: i * 9.0,
+                    child: const PlayingCardWidget(faceUp: false, width: 30),
                   ),
               ],
             ),
@@ -477,8 +464,8 @@ class _OnlineTrickArea extends StatelessWidget {
 
     final cardScale = context.watch<AppSettings>().cardScale;
     return SizedBox(
-      width: 220,
-      height: 200,
+      width: 260,
+      height: 240,
       child: Stack(
         children: [
           for (final entry in trick)
@@ -488,7 +475,7 @@ class _OnlineTrickArea extends StatelessWidget {
                   controller.mySeat!),
               child: PlayingCardWidget(
                 card: cardFromJson(entry['card'] as Map<String, dynamic>),
-                width: 52 * cardScale,
+                width: 68 * cardScale,
               ),
             ),
         ],
@@ -632,13 +619,7 @@ class _OnlineHumanHand extends StatelessWidget {
     final legal = controller.legalPlaysForMe.toSet();
     final trick = controller.currentTrick;
     final cardScale = context.watch<AppSettings>().cardScale;
-    final sorted = [...cards]..sort((a, b) {
-        final suitDiff = a.suit.index.compareTo(b.suit.index);
-        if (suitDiff != 0) return suitDiff;
-        return plainOrderHighToLow
-            .indexOf(a.rank)
-            .compareTo(plainOrderHighToLow.indexOf(b.rank));
-      });
+    final sorted = sortedForHand(cards);
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
@@ -653,30 +634,16 @@ class _OnlineHumanHand extends StatelessWidget {
                   style:
                       const TextStyle(color: Colors.redAccent, fontSize: 12)),
             ),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                for (final card in sorted)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 2),
-                    child: buildHandCard(
-                      card: card,
-                      dimmed: isMyTurn && !legal.contains(card),
-                      selectable: isMyTurn && legal.contains(card),
-                      reason: isMyTurn && !legal.contains(card) && trick != null
-                          ? illegalPlayReason(trick, cards, card)
-                          : null,
-                      onTap: () {
-                        playTapSound(context.read<AppSettings>());
-                        controller.playCard(card);
-                      },
-                      width: 48 * cardScale,
-                    ),
-                  ),
-              ],
-            ),
+          FannedHand(
+            cards: sorted,
+            legal: legal,
+            isMyTurn: isMyTurn,
+            cardScale: cardScale,
+            reasonFor: (card) => trick != null ? illegalPlayReason(trick, cards, card) : null,
+            onTap: (card) {
+              playTapSound(context.read<AppSettings>());
+              controller.playCard(card);
+            },
           ),
         ],
       ),
