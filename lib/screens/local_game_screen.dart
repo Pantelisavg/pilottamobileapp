@@ -430,6 +430,10 @@ class _DeclarationPanel extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           FilledButton(
+            // Overrides the theme's full-width (Size.fromHeight) minimumSize,
+            // which forces an infinite width crash for a button placed next
+            // to something else in a Row instead of alone in a Column.
+            style: FilledButton.styleFrom(minimumSize: const Size(64, 40)),
             onPressed: canAnnounce
                 ? controller.announceDeclaration
                 : controller.revealDeclaration,
