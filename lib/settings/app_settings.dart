@@ -9,9 +9,11 @@ class AppSettings extends ChangeNotifier {
   static const _kSound = 'soundEnabled';
   static const _kCardScale = 'cardScale';
   static const _kHandAscending = 'handAscending';
+  static const _kPlayerName = 'playerName';
 
   static const double minCardScale = 0.8;
   static const double maxCardScale = 1.3;
+  static const String defaultPlayerName = 'Εσύ';
 
   final SharedPreferences _prefs;
 
@@ -19,6 +21,7 @@ class AppSettings extends ChangeNotifier {
   bool _soundEnabled;
   double _cardScale;
   bool _handAscending;
+  String _playerName;
 
   AppSettings._(
     this._prefs, {
@@ -26,10 +29,12 @@ class AppSettings extends ChangeNotifier {
     required bool soundEnabled,
     required double cardScale,
     required bool handAscending,
+    required String playerName,
   })  : _mustOvertrumpAllSuits = mustOvertrumpAllSuits,
         _soundEnabled = soundEnabled,
         _cardScale = cardScale,
-        _handAscending = handAscending;
+        _handAscending = handAscending,
+        _playerName = playerName;
 
   static Future<AppSettings> load() async {
     final prefs = await SharedPreferences.getInstance();
@@ -39,6 +44,7 @@ class AppSettings extends ChangeNotifier {
       soundEnabled: prefs.getBool(_kSound) ?? true,
       cardScale: prefs.getDouble(_kCardScale) ?? 1.0,
       handAscending: prefs.getBool(_kHandAscending) ?? false,
+      playerName: prefs.getString(_kPlayerName) ?? defaultPlayerName,
     );
   }
 
@@ -50,6 +56,10 @@ class AppSettings extends ChangeNotifier {
   /// A, K, Q, J, 10, 9, 8, 7 (highest first); true reverses it to
   /// 7, 8, 9, 10, J, Q, K, A.
   bool get handAscending => _handAscending;
+
+  /// The name shown for the human seat in local play, and the default
+  /// pre-filled when joining an online/Bluetooth room.
+  String get playerName => _playerName;
 
   Future<void> setMustOvertrumpAllSuits(bool value) async {
     if (value == _mustOvertrumpAllSuits) return;
@@ -78,5 +88,14 @@ class AppSettings extends ChangeNotifier {
     _handAscending = value;
     notifyListeners();
     await _prefs.setBool(_kHandAscending, value);
+  }
+
+  Future<void> setPlayerName(String value) async {
+    final trimmed = value.trim();
+    final effective = trimmed.isEmpty ? defaultPlayerName : trimmed;
+    if (effective == _playerName) return;
+    _playerName = effective;
+    notifyListeners();
+    await _prefs.setString(_kPlayerName, effective);
   }
 }

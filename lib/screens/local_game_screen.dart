@@ -52,6 +52,7 @@ class LocalGameScreen extends StatelessWidget {
     return ChangeNotifierProvider(
       create: (context) => LocalGameController(
         targetScore: targetScore,
+        playerName: context.read<AppSettings>().playerName,
         mustOvertrumpAllSuits:
             context.read<AppSettings>().mustOvertrumpAllSuits,
       ),

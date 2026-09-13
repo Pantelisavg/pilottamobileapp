@@ -5,6 +5,7 @@ import '../bluetooth/bluetooth_game_controller.dart';
 import '../bluetooth/bluetooth_host_session.dart';
 import '../controllers/room_client_controller.dart';
 import '../settings/app_settings.dart';
+import '../widgets/target_score_selector.dart';
 import 'networked_game_screen.dart';
 
 /// Entry point for offline, no-internet multiplayer over Bluetooth/local
@@ -18,14 +19,16 @@ class BluetoothLobbyScreen extends StatefulWidget {
 }
 
 class _BluetoothLobbyScreenState extends State<BluetoothLobbyScreen> {
-  final _nameController = TextEditingController(text: 'Παίκτης');
-  int _targetScore = 101;
+  final _nameController = TextEditingController();
+  int _targetScore = kTargetScorePresets.first;
   bool _mustOvertrumpAllSuits = false;
 
   @override
   void initState() {
     super.initState();
-    _mustOvertrumpAllSuits = context.read<AppSettings>().mustOvertrumpAllSuits;
+    final settings = context.read<AppSettings>();
+    _mustOvertrumpAllSuits = settings.mustOvertrumpAllSuits;
+    _nameController.text = settings.playerName;
   }
 
   @override
@@ -35,7 +38,9 @@ class _BluetoothLobbyScreenState extends State<BluetoothLobbyScreen> {
   }
 
   void _hostGame() {
-    final name = _nameController.text.trim().isEmpty ? 'Οικοδεσπότης' : _nameController.text.trim();
+    final name = _nameController.text.trim().isEmpty
+        ? 'Οικοδεσπότης'
+        : _nameController.text.trim();
     final session = BluetoothHostSession(
       targetScore: _targetScore,
       hostName: name,
@@ -51,7 +56,9 @@ class _BluetoothLobbyScreenState extends State<BluetoothLobbyScreen> {
   }
 
   void _findGame() {
-    final name = _nameController.text.trim().isEmpty ? 'Παίκτης' : _nameController.text.trim();
+    final name = _nameController.text.trim().isEmpty
+        ? 'Παίκτης'
+        : _nameController.text.trim();
     Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => BluetoothDiscoveryScreen(playerName: name),
     ));
@@ -78,7 +85,8 @@ class _BluetoothLobbyScreenState extends State<BluetoothLobbyScreen> {
                 style: TextStyle(color: Colors.white70, fontSize: 12),
               ),
               const SizedBox(height: 20),
-              const Text('Το όνομά σου', style: TextStyle(color: Colors.white70, fontSize: 12)),
+              const Text('Το όνομά σου',
+                  style: TextStyle(color: Colors.white70, fontSize: 12)),
               const SizedBox(height: 6),
               TextField(
                 controller: _nameController,
@@ -87,8 +95,10 @@ class _BluetoothLobbyScreenState extends State<BluetoothLobbyScreen> {
                   filled: true,
                   fillColor: Colors.black26,
                   border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide.none),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 ),
               ),
               const SizedBox(height: 28),
@@ -102,30 +112,70 @@ class _BluetoothLobbyScreenState extends State<BluetoothLobbyScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const Text('Φιλοξένησε παιχνίδι',
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16)),
                     const SizedBox(height: 10),
-                    const Text('Πόντοι νίκης', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                    const Text('Πόντοι νίκης',
+                        style: TextStyle(color: Colors.white70, fontSize: 12)),
                     const SizedBox(height: 6),
-                    SegmentedButton<int>(
-                      segments: const [
-                        ButtonSegment(value: 101, label: Text('101')),
-                        ButtonSegment(value: 151, label: Text('151')),
-                        ButtonSegment(value: 201, label: Text('201')),
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        SegmentedButton<int>(
+                          segments: [
+                            for (final option in kTargetScorePresets)
+                              ButtonSegment(
+                                  value: option, label: Text('$option')),
+                          ],
+                          selected: {_targetScore},
+                          onSelectionChanged: (s) =>
+                              setState(() => _targetScore = s.first),
+                          style: SegmentedButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            selectedForegroundColor: Colors.black,
+                            selectedBackgroundColor: Colors.amber,
+                          ),
+                        ),
+                        OutlinedButton(
+                          onPressed: () async {
+                            final result = await showCustomTargetScoreDialog(
+                              context,
+                              current: _targetScore,
+                            );
+                            if (result != null) {
+                              setState(() => _targetScore = result);
+                            }
+                          },
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor:
+                                !kTargetScorePresets.contains(_targetScore)
+                                    ? Colors.black
+                                    : Colors.white,
+                            backgroundColor:
+                                !kTargetScorePresets.contains(_targetScore)
+                                    ? Colors.amber
+                                    : null,
+                            side: const BorderSide(color: Colors.white38),
+                          ),
+                          child: Text(
+                              !kTargetScorePresets.contains(_targetScore)
+                                  ? 'Προσαρμογή: $_targetScore'
+                                  : 'Προσαρμογή'),
+                        ),
                       ],
-                      selected: {_targetScore},
-                      onSelectionChanged: (s) => setState(() => _targetScore = s.first),
-                      style: SegmentedButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        selectedForegroundColor: Colors.black,
-                        selectedBackgroundColor: Colors.amber,
-                      ),
                     ),
                     CheckboxListTile(
                       contentPadding: EdgeInsets.zero,
                       controlAffinity: ListTileControlAffinity.leading,
                       value: _mustOvertrumpAllSuits,
-                      onChanged: (v) => setState(() => _mustOvertrumpAllSuits = v ?? false),
-                      title: const Text('Υποχρεωτικό ανέβασμα σε όλα τα χρώματα',
+                      onChanged: (v) =>
+                          setState(() => _mustOvertrumpAllSuits = v ?? false),
+                      title: const Text(
+                          'Υποχρεωτικό ανέβασμα σε όλα τα χρώματα',
                           style: TextStyle(color: Colors.white, fontSize: 13)),
                     ),
                     const SizedBox(height: 4),
@@ -148,7 +198,10 @@ class _BluetoothLobbyScreenState extends State<BluetoothLobbyScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const Text('Βρες παιχνίδι κοντά σου',
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16)),
                     const SizedBox(height: 10),
                     FilledButton.icon(
                       onPressed: _findGame,
@@ -172,7 +225,8 @@ class BluetoothDiscoveryScreen extends StatefulWidget {
   const BluetoothDiscoveryScreen({super.key, required this.playerName});
 
   @override
-  State<BluetoothDiscoveryScreen> createState() => _BluetoothDiscoveryScreenState();
+  State<BluetoothDiscoveryScreen> createState() =>
+      _BluetoothDiscoveryScreenState();
 }
 
 class _BluetoothDiscoveryScreenState extends State<BluetoothDiscoveryScreen> {
@@ -224,7 +278,10 @@ class _BluetoothDiscoveryScreenState extends State<BluetoothDiscoveryScreen> {
                 padding: EdgeInsets.all(16),
                 child: Row(
                   children: [
-                    SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)),
+                    SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2)),
                     SizedBox(width: 12),
                     Text('Σύνδεση...', style: TextStyle(color: Colors.white70)),
                   ],
@@ -233,7 +290,8 @@ class _BluetoothDiscoveryScreenState extends State<BluetoothDiscoveryScreen> {
             if (_controller.lastError != null)
               Padding(
                 padding: const EdgeInsets.all(16),
-                child: Text(_controller.lastError!, style: const TextStyle(color: Colors.redAccent)),
+                child: Text(_controller.lastError!,
+                    style: const TextStyle(color: Colors.redAccent)),
               ),
             Expanded(
               child: _controller.discoveredHosts.isEmpty
@@ -251,8 +309,10 @@ class _BluetoothDiscoveryScreenState extends State<BluetoothDiscoveryScreen> {
                       children: [
                         for (final entry in _controller.discoveredHosts.entries)
                           ListTile(
-                            leading: const Icon(Icons.table_bar, color: Colors.amber),
-                            title: Text(entry.value, style: const TextStyle(color: Colors.white)),
+                            leading: const Icon(Icons.table_bar,
+                                color: Colors.amber),
+                            title: Text(entry.value,
+                                style: const TextStyle(color: Colors.white)),
                             subtitle: const Text('Πάτησε για σύνδεση',
                                 style: TextStyle(color: Colors.white38)),
                             onTap: () => _controller.connectToHost(entry.key),
