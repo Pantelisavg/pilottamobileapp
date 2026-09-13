@@ -61,7 +61,10 @@ class _BiddingPanelState extends State<BiddingPanel> {
         mainAxisSize: MainAxisSize.min,
         children: [
           const Text('Η δήλωσή σου',
-              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           if (!canBidAtAll)
             Padding(
@@ -75,14 +78,19 @@ class _BiddingPanelState extends State<BiddingPanel> {
             // uses for its running totals.
             Text('${value ~/ 10}',
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.white, fontSize: 34, fontWeight: FontWeight.bold)),
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 34,
+                    fontWeight: FontWeight.bold)),
             // A slider so reaching a far-off value (e.g. jumping straight
             // to 40) doesn't mean tapping "+" dozens of times — drag for a
             // big jump, then fine-tune with the +/- buttons if needed.
             Row(
               children: [
                 IconButton(
-                  onPressed: canDecrement ? () => setState(() => _value = value - kBidIncrement) : null,
+                  onPressed: canDecrement
+                      ? () => setState(() => _value = value - kBidIncrement)
+                      : null,
                   icon: const Icon(Icons.remove_circle_outline),
                   color: Colors.white,
                 ),
@@ -105,7 +113,9 @@ class _BiddingPanelState extends State<BiddingPanel> {
                   ),
                 ),
                 IconButton(
-                  onPressed: canIncrement ? () => setState(() => _value = value + kBidIncrement) : null,
+                  onPressed: canIncrement
+                      ? () => setState(() => _value = value + kBidIncrement)
+                      : null,
                   icon: const Icon(Icons.add_circle_outline),
                   color: Colors.white,
                 ),
@@ -137,12 +147,14 @@ class _BiddingPanelState extends State<BiddingPanel> {
             alignment: WrapAlignment.center,
             children: [
               FilledButton(
-                onPressed:
-                    canBidValue ? () => widget.onCall(SuitBidCall(widget.seat, _suit, value)) : null,
+                onPressed: canBidValue
+                    ? () =>
+                        widget.onCall(SuitBidCall(widget.seat, _suit, value))
+                    : null,
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(canBidAtAll ? 'Δήλωση ${value ~/ 10} ' : 'Δήλωση '),
+                    Text('${value ~/ 10} '),
                     SuitIcon(_suit, size: 16),
                   ],
                 ),
@@ -151,20 +163,22 @@ class _BiddingPanelState extends State<BiddingPanel> {
                 onPressed: () => widget.onCall(CapotCall(widget.seat, _suit)),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
-                  children: [const Text('Καπότο '), SuitIcon(_suit, size: 16)],
+                  children: [const Text('Καπό '), SuitIcon(_suit, size: 16)],
                 ),
               ),
               if (_canDouble)
                 FilledButton.tonal(
-                  style: FilledButton.styleFrom(backgroundColor: Colors.orange.shade800),
+                  style: FilledButton.styleFrom(
+                      backgroundColor: Colors.orange.shade800),
                   onPressed: () => widget.onCall(DoubleCall(widget.seat)),
-                  child: const Text('Κόντρα'),
+                  child: const Text('Κλειστό'),
                 ),
               if (_canRedouble)
                 FilledButton.tonal(
-                  style: FilledButton.styleFrom(backgroundColor: Colors.red.shade900),
+                  style: FilledButton.styleFrom(
+                      backgroundColor: Colors.red.shade900),
                   onPressed: () => widget.onCall(RedoubleCall(widget.seat)),
-                  child: const Text('Ρεκόντρα'),
+                  child: const Text('Ανοιχτό'),
                 ),
               OutlinedButton(
                 onPressed: () => widget.onCall(PassCall(widget.seat)),

@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:pilotta_engine/pilotta_engine.dart';
 import 'package:pilotta_protocol/pilotta_protocol.dart';
 
+import '../persistence/local_game_save.dart';
+
 /// Drives a full local match: one human seat plus three bot seats, all on
 /// this device. This is a thin [ChangeNotifier] adapter around a
 /// [PilottaRoom] — the exact same room/game-flow logic that powers the
@@ -14,12 +16,18 @@ class LocalGameController extends ChangeNotifier {
   final PilottaRoom _room;
   final Seat humanSeat;
 
+  /// Whether every change auto-saves a "continue later" slot (see
+  /// [LocalGameSave]), cleared once the match ends. On by default; tests
+  /// that don't want to touch real platform storage pass false.
+  final bool _persistProgress;
+
   LocalGameController({
     required int targetScore,
     String playerName = 'Εσύ',
     Random? random,
     bool mustOvertrumpAllSuits = false,
-    Duration trickCollectDelay = const Duration(milliseconds: 3200),
+    Duration trickCollectDelay = const Duration(milliseconds: 1200),
+    bool persistProgress = true,
   })  : _room = PilottaRoom(
           roomCode: 'LOCAL',
           targetScore: targetScore,
@@ -27,10 +35,31 @@ class LocalGameController extends ChangeNotifier {
           mustOvertrumpAllSuits: mustOvertrumpAllSuits,
           trickCollectDelay: trickCollectDelay,
         ),
-        humanSeat = Seat.south {
-    _room.addListener(notifyListeners);
+        humanSeat = Seat.south,
+        _persistProgress = persistProgress {
+    _room.addListener(_onRoomChanged);
     _room.join(playerName);
     _room.start();
+  }
+
+  /// Rebuilds a controller from a previously-saved room (see
+  /// [LocalGameSave.load]) — picks up exactly where the match left off.
+  LocalGameController.resumed(Map<String, dynamic> savedJson,
+      {bool persistProgress = true})
+      : _room = PilottaRoom.restore(savedJson),
+        humanSeat = Seat.south,
+        _persistProgress = persistProgress {
+    _room.addListener(_onRoomChanged);
+  }
+
+  void _onRoomChanged() {
+    notifyListeners();
+    if (!_persistProgress) return;
+    if (_room.phase == RoomPhase.matchOver) {
+      LocalGameSave.clear();
+    } else {
+      LocalGameSave.save(_room);
+    }
   }
 
   RoomPhase get phase => _room.phase;
@@ -42,7 +71,7 @@ class LocalGameController extends ChangeNotifier {
 
   @override
   void dispose() {
-    _room.removeListener(notifyListeners);
+    _room.removeListener(_onRoomChanged);
     _room.dispose();
     super.dispose();
   }
@@ -52,7 +81,10 @@ class LocalGameController extends ChangeNotifier {
   bool isBotControlled(Seat seat) => _room.isBotControlled(seat);
 
   bool get isHumanTurnToBid =>
-      phase == RoomPhase.bidding && auction != null && auction!.seatToAct == humanSeat && !auction!.isComplete;
+      phase == RoomPhase.bidding &&
+      auction != null &&
+      auction!.seatToAct == humanSeat &&
+      !auction!.isComplete;
 
   bool get isHumanTurnToPlay =>
       phase == RoomPhase.playing &&
@@ -74,8 +106,10 @@ class LocalGameController extends ChangeNotifier {
   /// them immediately regardless of whether they've announced it yet.
   Declaration? get myBestDeclaration => hand?.bestDeclarationOf(humanSeat);
 
-  bool get canAnnounceDeclaration => hand?.canAnnounceDeclaration(humanSeat) ?? false;
-  bool get canRevealDeclaration => hand?.canRevealDeclaration(humanSeat) ?? false;
+  bool get canAnnounceDeclaration =>
+      hand?.canAnnounceDeclaration(humanSeat) ?? false;
+  bool get canRevealDeclaration =>
+      hand?.canRevealDeclaration(humanSeat) ?? false;
 
   /// Called by the UI when the human announces their declaration (only
   /// valid during trick 1 — see [canAnnounceDeclaration]).

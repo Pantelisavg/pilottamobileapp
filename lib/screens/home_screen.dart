@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../persistence/local_game_save.dart';
 import '../settings/app_settings.dart';
 import '../theme/game_mode_accent.dart';
 import '../theme/pilotta_colors.dart';
@@ -26,6 +27,64 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _targetScore = _TargetScoreSelector.presets.first;
+  bool _hasSave = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshSaveState();
+  }
+
+  Future<void> _refreshSaveState() async {
+    final hasSave = await LocalGameSave.exists();
+    if (mounted) setState(() => _hasSave = hasSave);
+  }
+
+  Future<void> _continueGame() async {
+    final saved = await LocalGameSave.load();
+    if (saved == null) {
+      await _refreshSaveState();
+      return;
+    }
+    if (!mounted) return;
+    await Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => LocalGameScreen.resume(resumeFrom: saved),
+    ));
+    _refreshSaveState();
+  }
+
+  Future<void> _startFreshLocalGame() async {
+    if (_hasSave) {
+      final discard = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: PilottaColors.felt800,
+          title: const Text('Παιχνίδι σε εξέλιξη',
+              style: TextStyle(color: PilottaColors.ink50)),
+          content: const Text(
+            'Έχεις ένα αποθηκευμένο παιχνίδι με bots. Αν ξεκινήσεις νέο, η πρόοδός του θα χαθεί.',
+            style: TextStyle(color: PilottaColors.ink200),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Άκυρο')),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Νέο παιχνίδι'),
+            ),
+          ],
+        ),
+      );
+      if (discard != true) return;
+      await LocalGameSave.clear();
+    }
+    if (!mounted) return;
+    await Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => LocalGameScreen(targetScore: _targetScore),
+    ));
+    _refreshSaveState();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -54,15 +113,21 @@ class _HomeScreenState extends State<HomeScreen> {
                           onChanged: (v) => setState(() => _targetScore = v),
                         ),
                         const SizedBox(height: PilottaSpacing.xl),
+                        if (_hasSave) ...[
+                          _ModeMenuTile(
+                            mode: GameModeAccent.localBots,
+                            title: 'Συνέχεια παιχνιδιού',
+                            subtitle:
+                                'Συνέχισε το παιχνίδι με bots από εκεί που έμεινες',
+                            onTap: _continueGame,
+                          ),
+                          const SizedBox(height: PilottaSpacing.sm),
+                        ],
                         _ModeMenuTile(
                           mode: GameModeAccent.localBots,
                           title: 'Παιχνίδι με Bots',
                           subtitle: 'Τοπικά, χωρίς σύνδεση — παίζεις αμέσως',
-                          onTap: () =>
-                              Navigator.of(context).push(MaterialPageRoute(
-                            builder: (_) =>
-                                LocalGameScreen(targetScore: _targetScore),
-                          )),
+                          onTap: _startFreshLocalGame,
                         ),
                         const SizedBox(height: PilottaSpacing.sm),
                         _ModeMenuTile(

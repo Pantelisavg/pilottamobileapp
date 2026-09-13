@@ -44,18 +44,32 @@ List<ScoreRow> _buildLocalScoreRows(List<HandResult> history, Seat viewerSeat) {
 }
 
 class LocalGameScreen extends StatelessWidget {
-  final int targetScore;
-  const LocalGameScreen({super.key, required this.targetScore});
+  /// Set for a fresh match; null when [resumeFrom] is used instead.
+  final int? targetScore;
+
+  /// Set to continue a previously-saved match (see [LocalGameSave]);
+  /// null for a fresh one.
+  final Map<String, dynamic>? resumeFrom;
+
+  const LocalGameScreen({super.key, required int this.targetScore})
+      : resumeFrom = null;
+
+  const LocalGameScreen.resume(
+      {super.key, required Map<String, dynamic> this.resumeFrom})
+      : targetScore = null;
 
   @override
   Widget build(BuildContext context) {
+    final resumeFrom = this.resumeFrom;
     return ChangeNotifierProvider(
-      create: (context) => LocalGameController(
-        targetScore: targetScore,
-        playerName: context.read<AppSettings>().playerName,
-        mustOvertrumpAllSuits:
-            context.read<AppSettings>().mustOvertrumpAllSuits,
-      ),
+      create: (context) => resumeFrom != null
+          ? LocalGameController.resumed(resumeFrom)
+          : LocalGameController(
+              targetScore: targetScore!,
+              playerName: context.read<AppSettings>().playerName,
+              mustOvertrumpAllSuits:
+                  context.read<AppSettings>().mustOvertrumpAllSuits,
+            ),
       child: const _GameView(),
     );
   }
@@ -183,7 +197,7 @@ class _ScoreHeader extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                '${contract.isCapot ? 'Καπότο' : contract.value}',
+                '${contract.isCapot ? 'Καπό' : contract.value}',
                 style:
                     const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
@@ -381,7 +395,7 @@ class _AuctionStatus extends StatelessWidget {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('${bid.isCapot ? 'Καπότο' : bid.value} ',
+                  Text('${bid.isCapot ? 'Καπό' : bid.value} ',
                       style: const TextStyle(
                           color: Colors.white,
                           fontSize: 16,
@@ -529,7 +543,7 @@ class _HandSummaryOverlay extends StatelessWidget {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('${contract.isCapot ? 'Καπότο' : contract.value} ',
+                  Text('${contract.isCapot ? 'Καπό' : contract.value} ',
                       style: const TextStyle(fontSize: 14)),
                   SuitIcon(contract.trumpSuit, size: 16),
                   Text(

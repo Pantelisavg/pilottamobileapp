@@ -7,13 +7,15 @@ import 'package:pilotta_engine/pilotta_engine.dart';
 import 'package:pilotta_protocol/pilotta_protocol.dart';
 
 void main() {
-  test('a full match can be played to completion with the human always passing '
+  test(
+      'a full match can be played to completion with the human always passing '
       'and playing its first legal card', () {
     fakeAsync((async) {
       final controller = LocalGameController(
         targetScore: 101,
         random: Random(7),
         trickCollectDelay: const Duration(milliseconds: 5),
+        persistProgress: false,
       );
 
       var guard = 0;
@@ -50,6 +52,7 @@ void main() {
         targetScore: 101,
         random: Random(3),
         trickCollectDelay: const Duration(milliseconds: 5),
+        persistProgress: false,
       );
 
       var guard = 0;

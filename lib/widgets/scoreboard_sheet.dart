@@ -54,7 +54,10 @@ void showScoreboardSheet(
           Padding(
             padding: const EdgeInsets.all(16),
             child: Text('Σκορ (στόχος $targetScore)',
-                style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold)),
           ),
           Expanded(
             child: rows.isEmpty
@@ -66,7 +69,8 @@ void showScoreboardSheet(
                     controller: scrollController,
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     itemCount: rows.length,
-                    separatorBuilder: (_, __) => const Divider(color: Colors.white12, height: 1),
+                    separatorBuilder: (_, __) =>
+                        const Divider(color: Colors.white12, height: 1),
                     itemBuilder: (context, i) {
                       final r = rows[rows.length - 1 - i]; // most recent first
                       return Padding(
@@ -76,23 +80,29 @@ void showScoreboardSheet(
                             SizedBox(
                               width: 24,
                               child: Text('${r.index}',
-                                  style: const TextStyle(color: Colors.white38, fontSize: 12)),
+                                  style: const TextStyle(
+                                      color: Colors.white38, fontSize: 12)),
                             ),
-                            SuitIcon(r.trumpSuit, size: 16, color: Colors.white70),
+                            SuitIcon(r.trumpSuit,
+                                size: 16, color: Colors.white70),
                             const SizedBox(width: 6),
                             Expanded(
                               child: Text(
-                                '${r.isCapot ? "Καπότο" : r.biddingValue} — ${r.biddingSeatLabel}'
+                                '${r.isCapot ? "Καπό" : r.biddingValue} — ${r.biddingSeatLabel}'
                                 '${r.contractMade ? "" : " (απέτυχε)"}',
                                 style: TextStyle(
-                                  color: r.contractMade ? Colors.white : Colors.redAccent.shade100,
+                                  color: r.contractMade
+                                      ? Colors.white
+                                      : Colors.redAccent.shade100,
                                   fontSize: 13,
                                 ),
                               ),
                             ),
                             Text('${r.roundedMine} – ${r.roundedTheirs}',
                                 style: const TextStyle(
-                                    color: Colors.amberAccent, fontSize: 14, fontWeight: FontWeight.bold)),
+                                    color: Colors.amberAccent,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold)),
                           ],
                         ),
                       );
@@ -105,9 +115,13 @@ void showScoreboardSheet(
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Σύνολο', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                const Text('Σύνολο',
+                    style: TextStyle(color: Colors.white70, fontSize: 14)),
                 Text('$totalMine – $totalTheirs',
-                    style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold)),
               ],
             ),
           ),

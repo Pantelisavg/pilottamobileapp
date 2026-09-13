@@ -6,6 +6,7 @@ import 'package:pilotta_engine/pilotta_engine.dart';
 import 'chat.dart';
 import 'codec.dart';
 import 'messages.dart';
+import 'save.dart';
 
 /// How many entries [PilottaRoom._chatLog] keeps before dropping the
 /// oldest — plenty for a single match's worth of table talk.
@@ -81,12 +82,125 @@ class PilottaRoom {
     Random? random,
     this.botBidDelay = const Duration(milliseconds: 500),
     this.botPlayDelay = const Duration(milliseconds: 600),
-    this.trickCollectDelay = const Duration(milliseconds: 3200),
+    this.trickCollectDelay = const Duration(milliseconds: 1200),
     this.mustOvertrumpAllSuits = false,
   }) : _random = random ?? Random() {
     _bot = SimpleBot(_random);
     scoreboard = MatchScoreboard(targetScore: targetScore);
     _dealer = Seat.values[_random.nextInt(4)];
+  }
+
+  // ------------------------------------------------------- save / resume
+  //
+  // For "continue this game later" (local, single-device play only — no
+  // privacy to preserve, unlike the network snapshot which hides other
+  // seats' hands). Everything needed to reconstruct an identical room is
+  // captured, including a hand-in-progress; a fresh [PilottaRoom] is
+  // always the starting point (matching this room's own config), then
+  // every piece of saved state is layered on.
+
+  /// A full private snapshot of this room, suitable for [restore] later.
+  /// Only meaningful once [start] has been called (a still-empty lobby has
+  /// nothing worth saving).
+  Map<String, dynamic> toSaveJson() => {
+        'roomCode': roomCode,
+        'targetScore': targetScore,
+        'mustOvertrumpAllSuits': mustOvertrumpAllSuits,
+        'seats': {for (final e in seats.entries) e.key.name: e.value.toJson()},
+        'phase': phase.name,
+        'dealer': _dealer.name,
+        'originalHands': _originalHands == null
+            ? null
+            : {
+                for (final e in _originalHands!.entries)
+                  e.key.name: cardsToJson(e.value)
+              },
+        'auctionCalls': auction?.calls.map(auctionCallToJson).toList(),
+        'hand': hand == null ? null : handToSaveJson(hand!),
+        'lastHandResult':
+            lastHandResult == null ? null : handResultToJson(lastHandResult!),
+        'banner': banner,
+        'readyForNextHand': readyForNextHand.map((s) => s.name).toList(),
+        'scoreboardHistory': scoreboard.history.map(handResultToJson).toList(),
+      };
+
+  /// Rebuilds a room from [toSaveJson], picking up exactly where it left
+  /// off — mid-bidding, mid-hand (including a partially-played trick and
+  /// any announced/revealed declarations), or between hands.
+  static PilottaRoom restore(
+    Map<String, dynamic> json, {
+    Random? random,
+    Duration botBidDelay = const Duration(milliseconds: 500),
+    Duration botPlayDelay = const Duration(milliseconds: 600),
+    Duration trickCollectDelay = const Duration(milliseconds: 1200),
+  }) {
+    final room = PilottaRoom(
+      roomCode: json['roomCode'] as String,
+      targetScore: json['targetScore'] as int,
+      random: random,
+      botBidDelay: botBidDelay,
+      botPlayDelay: botPlayDelay,
+      trickCollectDelay: trickCollectDelay,
+      mustOvertrumpAllSuits: json['mustOvertrumpAllSuits'] as bool? ?? false,
+    );
+
+    for (final e in (json['seats'] as Map<String, dynamic>).entries) {
+      room.seats[Seat.values.byName(e.key)] =
+          SeatInfo.fromJson(e.value as Map<String, dynamic>);
+    }
+    room.phase = RoomPhase.values.byName(json['phase'] as String);
+    room._dealer = Seat.values.byName(json['dealer'] as String);
+
+    final originalHandsJson = json['originalHands'] as Map<String, dynamic>?;
+    room._originalHands = originalHandsJson == null
+        ? null
+        : {
+            for (final e in originalHandsJson.entries)
+              Seat.values.byName(e.key):
+                  cardsFromJson(e.value as List<dynamic>),
+          };
+
+    final auctionCallsJson = json['auctionCalls'] as List<dynamic>?;
+    if (auctionCallsJson != null) {
+      final calls = auctionCallsJson
+          .map((e) => auctionCallFromJson(e as Map<String, dynamic>))
+          .toList();
+      final startingSeat =
+          calls.isNotEmpty ? calls.first.seat : room._dealer.next;
+      room.auction = Auction(startingSeat);
+      for (final call in calls) {
+        room.auction!.apply(call);
+      }
+    }
+
+    final handJson = json['hand'] as Map<String, dynamic>?;
+    room.hand = handJson == null
+        ? null
+        : handFromSaveJson(handJson,
+            mustOvertrumpAllSuits: room.mustOvertrumpAllSuits);
+
+    final lastHandResultJson = json['lastHandResult'] as Map<String, dynamic>?;
+    room.lastHandResult = lastHandResultJson == null
+        ? null
+        : handResultFromJson(lastHandResultJson);
+
+    room.banner = json['banner'] as String?;
+    room.readyForNextHand.addAll((json['readyForNextHand'] as List<dynamic>)
+        .map((s) => Seat.values.byName(s as String)));
+
+    for (final resultJson in (json['scoreboardHistory'] as List<dynamic>)
+        .cast<Map<String, dynamic>>()) {
+      room.scoreboard.addHand(handResultFromJson(resultJson));
+    }
+
+    // Bot-controlled seats resume acting on their own exactly as they
+    // would mid-match — the very first thing that ran when the room was
+    // originally created, just re-triggered now that state is in place.
+    room._maybeAutoDeclareForBots();
+    room._maybeRunBotBidding();
+    room._maybeRunBotPlay();
+
+    return room;
   }
 
   void addListener(void Function() listener) => _listeners.add(listener);

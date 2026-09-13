@@ -83,6 +83,14 @@ Map<String, dynamic> declarationToJson(Declaration d) => {
       'pointValue': d.pointValue(),
     };
 
+Declaration declarationFromJson(Map<String, dynamic> json) {
+  final seat = Seat.values.byName(json['seat'] as String);
+  final cards = cardsFromJson(json['cards'] as List<dynamic>);
+  return json['kind'] == 'carre'
+      ? Declaration.carre(seat, cards)
+      : Declaration.sequence(seat, cards);
+}
+
 Map<String, dynamic> declarationOutcomeToJson(DeclarationOutcome o) => {
       'bestPerSeat': {
         for (final e in o.bestPerSeat.entries)
@@ -102,6 +110,42 @@ Map<String, dynamic> declarationOutcomeToJson(DeclarationOutcome o) => {
       'beloteSeat': o.beloteSeat?.name,
     };
 
+DeclarationOutcome declarationOutcomeFromJson(Map<String, dynamic> json) {
+  final bestPerSeat = <Seat, Declaration?>{
+    for (final seat in Seat.values) seat: null
+  };
+  for (final e in (json['bestPerSeat'] as Map<String, dynamic>).entries) {
+    bestPerSeat[Seat.values.byName(e.key)] =
+        declarationFromJson(e.value as Map<String, dynamic>);
+  }
+  final allPerSeat = <Seat, List<Declaration>>{
+    for (final seat in Seat.values) seat: const []
+  };
+  for (final e
+      in (json['allPerSeat'] as Map<String, dynamic>? ?? const {}).entries) {
+    allPerSeat[Seat.values.byName(e.key)] = (e.value as List<dynamic>)
+        .map((c) => declarationFromJson(c as Map<String, dynamic>))
+        .toList();
+  }
+  final forfeitedPerSeat = <Seat, Declaration>{};
+  for (final e in (json['forfeitedPerSeat'] as Map<String, dynamic>).entries) {
+    forfeitedPerSeat[Seat.values.byName(e.key)] =
+        declarationFromJson(e.value as Map<String, dynamic>);
+  }
+  return DeclarationOutcome(
+    bestPerSeat: bestPerSeat,
+    allPerSeat: allPerSeat,
+    forfeitedPerSeat: forfeitedPerSeat,
+    winningTeam: (json['winningTeam'] as String?) == null
+        ? null
+        : Team.values.byName(json['winningTeam'] as String),
+    winningTeamPoints: json['winningTeamPoints'] as int,
+    beloteSeat: (json['beloteSeat'] as String?) == null
+        ? null
+        : Seat.values.byName(json['beloteSeat'] as String),
+  );
+}
+
 Map<String, dynamic> handResultToJson(HandResult r) => {
       'contract': contractToJson(r.contract),
       'trickPoints': {
@@ -116,3 +160,26 @@ Map<String, dynamic> handResultToJson(HandResult r) => {
         'eastWest': r.rounded.eastWest
       },
     };
+
+HandResult handResultFromJson(Map<String, dynamic> json) {
+  final rounded = json['rounded'] as Map<String, dynamic>;
+  return HandResult(
+    contract: contractFromJson(json['contract'] as Map<String, dynamic>),
+    trickPoints: {
+      for (final e in (json['trickPoints'] as Map<String, dynamic>).entries)
+        Team.values.byName(e.key): e.value as int,
+    },
+    allTricksTeam: (json['allTricksTeam'] as String?) == null
+        ? null
+        : Team.values.byName(json['allTricksTeam'] as String),
+    declarations: declarationOutcomeFromJson(
+        json['declarations'] as Map<String, dynamic>),
+    contractMade: json['contractMade'] as bool,
+    rawTotals: {
+      for (final e in (json['rawTotals'] as Map<String, dynamic>).entries)
+        Team.values.byName(e.key): e.value as int,
+    },
+    rounded:
+        RoundedScore(rounded['northSouth'] as int, rounded['eastWest'] as int),
+  );
+}

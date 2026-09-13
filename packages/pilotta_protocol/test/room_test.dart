@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:math';
 
 import 'package:fake_async/fake_async.dart';
@@ -476,6 +477,193 @@ void main() {
       expect(room.chatLog.last.declarations, hasLength(2));
 
       room.dispose();
+    });
+  });
+
+  group('Save / resume', () {
+    /// Round-trips [json] through actual JSON encoding, not just Dart
+    /// object identity — a real save would go through SharedPreferences as
+    /// a string.
+    Map<String, dynamic> roundTripJson(Map<String, dynamic> json) =>
+        jsonDecode(jsonEncode(json)) as Map<String, dynamic>;
+
+    test('mid-bidding state round-trips through toSaveJson/restore', () {
+      final room =
+          PilottaRoom(roomCode: 'PPPP', targetScore: 101, random: Random(1));
+      for (final name in ['A', 'B', 'C', 'D']) {
+        room.join(name);
+      }
+      room.start();
+      final firstToAct = room.auction!.seatToAct;
+      room.handleBid(firstToAct, SuitBidCall(firstToAct, Suit.spades, 80));
+
+      final restored = PilottaRoom.restore(roundTripJson(room.toSaveJson()));
+
+      expect(restored.phase, RoomPhase.bidding);
+      expect(restored.auction!.calls, hasLength(1));
+      expect(restored.auction!.seatToAct, firstToAct.next);
+      for (final seat in Seat.values) {
+        expect(restored.seats[seat]!.playerName, room.seats[seat]!.playerName);
+      }
+
+      room.dispose();
+      restored.dispose();
+    });
+
+    test(
+        'mid-hand state (a completed trick, a revealed declaration, a '
+        "partial next trick) round-trips, and play continues correctly", () {
+      PilottaRoom? found;
+      Seat? declSeat;
+      for (var seed = 0; seed < 60; seed++) {
+        final room = PilottaRoom(
+          roomCode: 'QQQQ',
+          targetScore: 101,
+          random: Random(seed),
+          trickCollectDelay: const Duration(milliseconds: 5),
+        );
+        for (final name in ['A', 'B', 'C', 'D']) {
+          room.join(name);
+        }
+        room.start();
+        final firstToAct = room.auction!.seatToAct;
+        room.handleBid(firstToAct, SuitBidCall(firstToAct, Suit.spades, 80));
+        var next = firstToAct.next;
+        while (room.phase == RoomPhase.bidding) {
+          room.handleBid(next, PassCall(next));
+          next = next.next;
+        }
+        final seat = Seat.values
+            .where((s) => room.hand!.bestDeclarationOf(s) != null)
+            .firstOrNull;
+        if (seat != null) {
+          found = room;
+          declSeat = seat;
+          break;
+        }
+        room.dispose();
+      }
+      if (found == null) {
+        fail('No seed in range produced a hand with any declaration.');
+      }
+      final room = found;
+      final seat = declSeat!;
+
+      fakeAsync((async) {
+        expect(room.handleAnnounceDeclaration(seat), isNull);
+
+        // Play out trick 1.
+        while (room.hand!.completedTricks.isEmpty) {
+          final toAct = room.hand!.currentTrick.seatToPlay;
+          room.handlePlayCard(toAct, room.hand!.legalPlays(toAct).first);
+          async.elapse(const Duration(milliseconds: 10));
+        }
+
+        // Reveal right before this seat's trick-2 card, then play it.
+        while (room.hand!.currentTrick.seatToPlay != seat) {
+          final toAct = room.hand!.currentTrick.seatToPlay;
+          room.handlePlayCard(toAct, room.hand!.legalPlays(toAct).first);
+          async.elapse(const Duration(milliseconds: 10));
+        }
+        expect(room.handleRevealDeclaration(seat), isNull);
+        room.handlePlayCard(seat, room.hand!.legalPlays(seat).first);
+        async.elapse(const Duration(milliseconds: 10));
+
+        // Save mid-trick-2 (not necessarily complete).
+        final expectedCompletedTricks = room.hand!.completedTricks.length;
+        final expectedCurrentTrickPlays = room.hand!.currentTrick.played.length;
+        final expectedDeclState = room.hand!.declarationStateOf(seat);
+        final expectedValue = room.hand!.bestDeclarationOf(seat)!.pointValue();
+
+        final restored = PilottaRoom.restore(
+          roundTripJson(room.toSaveJson()),
+          random: Random(999),
+          trickCollectDelay: const Duration(milliseconds: 5),
+        );
+
+        expect(restored.phase, RoomPhase.playing);
+        expect(
+            restored.hand!.completedTricks, hasLength(expectedCompletedTricks));
+        expect(restored.hand!.currentTrick.played,
+            hasLength(expectedCurrentTrickPlays));
+        expect(restored.hand!.declarationStateOf(seat), expectedDeclState);
+        expect(restored.hand!.bestDeclarationOf(seat)!.pointValue(),
+            expectedValue);
+
+        // Play continues correctly to completion from the restored state.
+        var guard = 0;
+        while (restored.phase == RoomPhase.playing && guard++ < 500) {
+          if (!restored.hand!.currentTrick.isComplete) {
+            final toAct = restored.hand!.currentTrick.seatToPlay;
+            final legal = restored.hand!.legalPlays(toAct);
+            if (legal.isNotEmpty) restored.handlePlayCard(toAct, legal.first);
+          }
+          async.elapse(const Duration(milliseconds: 10));
+        }
+
+        expect(restored.phase, RoomPhase.handSummary);
+        expect(
+            restored.lastHandResult!.declarations.bestPerSeat[seat]
+                ?.pointValue(),
+            expectedValue);
+
+        room.dispose();
+        restored.dispose();
+      });
+    });
+
+    test('scoreboard history round-trips after a hand finishes', () {
+      fakeAsync((async) {
+        final room = PilottaRoom(
+          roomCode: 'RRRR',
+          targetScore: 1000,
+          random: Random(6),
+          botBidDelay: const Duration(milliseconds: 5),
+          botPlayDelay: const Duration(milliseconds: 5),
+          trickCollectDelay: const Duration(milliseconds: 5),
+        );
+        // A human seat that never marks ready keeps the room resting at
+        // handSummary — an all-bot room would auto-ready and sail straight
+        // past it into the next hand (or straight to matchOver) instead.
+        final south = room.join('Human')!;
+        room.start();
+
+        var guard = 0;
+        while (room.phase == RoomPhase.bidding && guard++ < 2000) {
+          if (room.auction!.seatToAct == south) {
+            room.handleBid(south, PassCall(south));
+          }
+          async.elapse(const Duration(milliseconds: 5));
+        }
+        guard = 0;
+        while (room.phase == RoomPhase.playing && guard++ < 5000) {
+          final h = room.hand;
+          if (h != null &&
+              !h.currentTrick.isComplete &&
+              h.currentTrick.seatToPlay == south) {
+            final legal = h.legalPlays(south);
+            if (legal.isNotEmpty) room.handlePlayCard(south, legal.first);
+          }
+          async.elapse(const Duration(milliseconds: 5));
+        }
+        expect(room.phase, RoomPhase.handSummary);
+        expect(room.scoreboard.history, hasLength(1));
+
+        final restored = PilottaRoom.restore(
+          roundTripJson(room.toSaveJson()),
+          trickCollectDelay: const Duration(milliseconds: 5),
+        );
+
+        expect(restored.phase, RoomPhase.handSummary);
+        expect(restored.scoreboard.history, hasLength(1));
+        expect(restored.scoreboard.totals[Team.northSouth],
+            room.scoreboard.totals[Team.northSouth]);
+        expect(restored.scoreboard.totals[Team.eastWest],
+            room.scoreboard.totals[Team.eastWest]);
+
+        room.dispose();
+        restored.dispose();
+      });
     });
   });
 }

@@ -7,3 +7,4 @@ export 'src/chat.dart';
 export 'src/codec.dart';
 export 'src/messages.dart';
 export 'src/room.dart';
+export 'src/save.dart';

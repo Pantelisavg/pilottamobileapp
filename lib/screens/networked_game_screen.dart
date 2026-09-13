@@ -333,7 +333,7 @@ class _OnlineScoreHeader extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                contract['isCapot'] == true ? 'Καπότο' : '${contract['value']}',
+                contract['isCapot'] == true ? 'Καπό' : '${contract['value']}',
                 style:
                     const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
@@ -545,7 +545,7 @@ class _OnlineAuctionStatus extends StatelessWidget {
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text('${bid.isCapot ? 'Καπότο' : bid.value} ',
+                      Text('${bid.isCapot ? 'Καπό' : bid.value} ',
                           style: const TextStyle(
                               color: Colors.white,
                               fontSize: 16,
@@ -721,7 +721,7 @@ class _OnlineHandSummaryOverlay extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                      '${contract['isCapot'] == true ? 'Καπότο' : contract['value']} ',
+                      '${contract['isCapot'] == true ? 'Καπό' : contract['value']} ',
                       style: const TextStyle(fontSize: 14)),
                   SuitIcon(Suit.values.byName(contract['trumpSuit'] as String),
                       size: 16),

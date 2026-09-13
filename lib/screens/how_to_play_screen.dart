@@ -28,7 +28,8 @@ class HowToPlayScreen extends StatelessWidget {
                   children: [
                     IconButton(
                       onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.arrow_back, color: PilottaColors.ink50),
+                      icon: const Icon(Icons.arrow_back,
+                          color: PilottaColors.ink50),
                     ),
                     const SizedBox(width: PilottaSpacing.xs),
                     Text('Πώς παίζεται', style: PilottaTypography.title),
@@ -38,7 +39,8 @@ class HowToPlayScreen extends StatelessWidget {
               Expanded(
                 child: ListView(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: PilottaSpacing.lg, vertical: PilottaSpacing.md),
+                      horizontal: PilottaSpacing.lg,
+                      vertical: PilottaSpacing.md),
                   children: const [
                     _Section(
                       title: 'Η μοιρασιά & η δημοπρασία',
@@ -47,9 +49,9 @@ class HowToPlayScreen extends StatelessWidget {
                         'Οι δηλώσεις ξεκινούν από τον παίκτη μετά τον μοιραστή. Κάθε δήλωση '
                             'πρέπει να είναι μεγαλύτερη από την προηγούμενη, πολλαπλάσιο του 10, '
                             'ξεκινώντας από 80.',
-                        'Μπορείς να "κοντράρεις" τη δήλωση του αντιπάλου (x2) ή να "ξανακοντράρεις" '
-                            'τη δική σου κοντραρισμένη δήλωση (x4).',
-                        'Το "Καπότο" είναι μια ειδική δήλωση: υπόσχεσαι να πάρεις όλες τις 8 μπάζες.',
+                        'Μπορείς να παίξεις "Κλειστό" στη δήλωση του αντιπάλου (x2) ή "Ανοιχτό" '
+                            'στη δική σου δήλωση που παίχτηκε "Κλειστό" (x4).',
+                        'Το "Καπό" είναι μια ειδική δήλωση: υπόσχεσαι να πάρεις όλες τις 8 μπάζες.',
                         'Αν όλοι περάσουν χωρίς δήλωση, μοιράζει ξανά ο επόμενος.',
                       ],
                     ),
@@ -93,9 +95,9 @@ class HowToPlayScreen extends StatelessWidget {
                         'Πέτυχε η δήλωση: η ομάδα που δήλωσε κρατά τους πόντους της + την αξία της δήλωσης.',
                         'Απέτυχε η δήλωση: η αντίπαλη ομάδα παίρνει την αξία της δήλωσης + όλους '
                             'τους πόντους του χεριού (162 + δηλώσεις).',
-                        'Κοντραρισμένη δήλωση: όποια ομάδα δικαιώθηκε παίρνει ΟΛΟΥΣ τους πόντους '
+                        'Δήλωση σε Κλειστό/Ανοιχτό: όποια ομάδα δικαιώθηκε παίρνει ΟΛΟΥΣ τους πόντους '
                             'του χεριού + την (πολλαπλασιασμένη) αξία της δήλωσης, η άλλη τίποτα.',
-                        'Καπότο (όλες οι μπάζες): 250 πόντοι αντί για το κανονικό άθροισμα.',
+                        'Καπό (όλες οι μπάζες): 250 πόντοι αντί για το κανονικό άθροισμα.',
                         'Οι τελικοί πόντοι στρογγυλοποιούνται στο 10άρι — στην ισοπαλία στο 6 '
                             'κερδίζει η ομάδα που δήλωσε.',
                       ],
@@ -130,9 +132,14 @@ class _Section extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('•  ', style: TextStyle(color: PilottaColors.gold500)),
+                  const Text('•  ',
+                      style: TextStyle(color: PilottaColors.gold500)),
                   Expanded(
-                    child: Text(b, style: const TextStyle(color: PilottaColors.ink200, fontSize: 13, height: 1.35)),
+                    child: Text(b,
+                        style: const TextStyle(
+                            color: PilottaColors.ink200,
+                            fontSize: 13,
+                            height: 1.35)),
                   ),
                 ],
               ),

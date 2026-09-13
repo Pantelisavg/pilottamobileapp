@@ -190,6 +190,14 @@ class PilottaHand {
     return currentTrick.legalPlays(_hands[seat]!);
   }
 
+  /// Directly sets every seat's announce/reveal state, bypassing the usual
+  /// timing checks — used only to reconstruct a hand from previously-saved
+  /// state (a "continue game later" resume), where these states are
+  /// already-valid history, not a new live call.
+  void restoreDeclarationStates(Map<Seat, DeclarationAnnounceState> states) {
+    _declarationState.addAll(states);
+  }
+
   /// Whether [seat] may announce a (non-Pilotta) declaration right now:
   /// only during trick 1, only once, and only if they actually hold one.
   bool canAnnounceDeclaration(Seat seat) {
