@@ -40,6 +40,12 @@ class SimpleBot {
       return PassCall(seat);
     }
 
+    // Once doubled/redoubled, no suit bid or Capot call is legal anymore —
+    // only a pass (this bot never redoubles either).
+    if (auction.multiplier != ContractMultiplier.none) {
+      return PassCall(seat);
+    }
+
     final nextValue = bid.value + kBidIncrement;
     if (bid.seat.team != seat.team &&
         !bid.isCapot &&
@@ -80,15 +86,18 @@ class SimpleBot {
     final legal = [...trick.legalPlays(hand)];
     if (legal.length == 1) return legal.first;
 
-    legal.sort((a, b) => a.pointValue(trumpSuit).compareTo(b.pointValue(trumpSuit)));
+    legal.sort(
+        (a, b) => a.pointValue(trumpSuit).compareTo(b.pointValue(trumpSuit)));
     final lowestValue = legal.first.pointValue(trumpSuit);
-    final cheapest = legal.where((c) => c.pointValue(trumpSuit) == lowestValue).toList();
+    final cheapest =
+        legal.where((c) => c.pointValue(trumpSuit) == lowestValue).toList();
     return cheapest[_random.nextInt(cheapest.length)];
   }
 
   /// Whether this bot chooses to announce its best declaration, if any.
   /// Always announces — declarations are free points with no downside.
-  Declaration? decideDeclaration(Seat seat, List<PlayingCard> hand, Suit trumpSuit) {
+  Declaration? decideDeclaration(
+      Seat seat, List<PlayingCard> hand, Suit trumpSuit) {
     return bestDeclaration(seat, hand, trumpSuit);
   }
 }

@@ -348,9 +348,16 @@ class PilottaRoom {
     _pendingBotMove?.cancel();
     _pendingBotMove = Timer(botBidDelay, () {
       if (_disposed || auction != a || a.isComplete) return;
-      final call =
-          _bot.decideBid(a, a.seatToAct, _originalHands![a.seatToAct]!);
-      a.apply(call);
+      final seat = a.seatToAct;
+      final call = _bot.decideBid(a, seat, _originalHands![seat]!);
+      try {
+        a.apply(call);
+      } on IllegalCallException {
+        // A bot heuristic that misjudges the auction state (e.g. tries to
+        // raise after a double) must never crash the room — fall back to
+        // the one call that's always legal here.
+        a.apply(PassCall(seat));
+      }
       _notify();
       _maybeRunBotBidding();
     });

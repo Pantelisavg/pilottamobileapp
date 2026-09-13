@@ -118,14 +118,30 @@ class Auction {
 
   Seat get seatToAct => _currentSeat;
 
+  /// Whether — and how much — the current bid has been doubled/redoubled.
+  /// Once this is anything but [ContractMultiplier.none], no further suit
+  /// bid or Capot call is legal — only a pass, or (if just doubled) a
+  /// redouble by the bidding team.
+  ContractMultiplier get multiplier => _multiplier;
+
   /// The bid currently on the table (ignoring double/redouble), or null.
   ({Seat seat, Suit suit, int value, bool isCapot})? get currentBid {
     for (final call in _calls.reversed) {
       if (call is SuitBidCall) {
-        return (seat: call.seat, suit: call.suit, value: call.value, isCapot: false);
+        return (
+          seat: call.seat,
+          suit: call.suit,
+          value: call.value,
+          isCapot: false
+        );
       }
       if (call is CapotCall) {
-        return (seat: call.seat, suit: call.suit, value: kCapotValue, isCapot: true);
+        return (
+          seat: call.seat,
+          suit: call.suit,
+          value: kCapotValue,
+          isCapot: true
+        );
       }
     }
     return null;
@@ -226,8 +242,7 @@ class Auction {
           throw IllegalCallException('Nothing doubled to redouble.');
         }
         if (call.seat.team != bid.seat.team) {
-          throw IllegalCallException(
-              'Only the bidding team may redouble.');
+          throw IllegalCallException('Only the bidding team may redouble.');
         }
     }
   }

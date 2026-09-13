@@ -34,22 +34,31 @@ class _BiddingPanelState extends State<BiddingPanel> {
 
   bool get _canDouble {
     final bid = widget.auction.currentBid;
-    return bid != null && bid.seat.team != widget.seat.team;
+    return bid != null &&
+        bid.seat.team != widget.seat.team &&
+        widget.auction.multiplier == ContractMultiplier.none;
   }
 
   bool get _canRedouble {
     final bid = widget.auction.currentBid;
-    return bid != null && bid.seat.team == widget.seat.team;
+    return bid != null &&
+        bid.seat.team == widget.seat.team &&
+        widget.auction.multiplier == ContractMultiplier.doubled;
   }
 
   @override
   Widget build(BuildContext context) {
     final minValue = _minimumValue();
     final value = _value < minValue ? minValue : _value;
-    final canBidAtAll = minValue <= kMaxBidValue;
+    final currentBid = widget.auction.currentBid;
+    // Once doubled/redoubled, no suit bid or Capot call is legal anymore —
+    // only pass, or (via _canDouble/_canRedouble above) a double/redouble.
+    final auctionLocked = widget.auction.multiplier != ContractMultiplier.none;
+    final canBidAtAll = !auctionLocked && minValue <= kMaxBidValue;
     final canBidValue = canBidAtAll && value <= kMaxBidValue;
     final canIncrement = canBidAtAll && value + kBidIncrement <= kMaxBidValue;
     final canDecrement = canBidAtAll && value > minValue;
+    final canCallCapot = !auctionLocked && !(currentBid?.isCapot ?? false);
 
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
@@ -69,7 +78,10 @@ class _BiddingPanelState extends State<BiddingPanel> {
           if (!canBidAtAll)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Text('Έφτασε στο ανώτατο όριο (${kMaxBidValue ~/ 10})',
+              child: Text(
+                  auctionLocked
+                      ? 'Η δήλωση έχει κλειδώσει'
+                      : 'Έφτασε στο ανώτατο όριο (${kMaxBidValue ~/ 10})',
                   style: const TextStyle(color: Colors.white54, fontSize: 13)),
             )
           else ...[
@@ -160,7 +172,9 @@ class _BiddingPanelState extends State<BiddingPanel> {
                 ),
               ),
               FilledButton.tonal(
-                onPressed: () => widget.onCall(CapotCall(widget.seat, _suit)),
+                onPressed: canCallCapot
+                    ? () => widget.onCall(CapotCall(widget.seat, _suit))
+                    : null,
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [const Text('Καπό '), SuitIcon(_suit, size: 16)],
