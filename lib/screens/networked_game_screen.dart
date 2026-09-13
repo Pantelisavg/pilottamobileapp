@@ -14,6 +14,7 @@ import '../widgets/chat_flash_banner.dart';
 import '../widgets/chat_panel.dart';
 import '../widgets/declaration_label.dart';
 import '../widgets/fanned_hand.dart';
+import '../widgets/hand_replay_dialog.dart';
 import '../widgets/hand_sort.dart';
 import '../widgets/illegal_reason.dart';
 import '../widgets/last_trick_dialog.dart';
@@ -320,6 +321,12 @@ class _OnlineScoreHeader extends StatelessWidget {
             totalMine: snapshot.totals[myTeamKey]!,
             totalTheirs: snapshot.totals[theirTeamKey]!,
             targetScore: snapshot.targetScore,
+            onRowTap: (i) => showHandReplayDialog(
+              context,
+              result: handResultFromJson(snapshot.matchHistory[i]),
+              viewerSeat: controller.mySeat!,
+              handNumber: i + 1,
+            ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

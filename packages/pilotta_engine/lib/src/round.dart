@@ -75,6 +75,16 @@ class HandResult {
   final Map<Team, int> rawTotals;
   final RoundedScore rounded;
 
+  /// The auction that led to [contract] — kept purely so a UI can show how
+  /// the bidding for this specific hand went after the fact; empty if not
+  /// supplied (e.g. hands constructed directly in tests).
+  final List<AuctionCall> auctionCalls;
+
+  /// Each seat's original 8-card deal, and every trick played, in order —
+  /// kept so a UI can replay the whole hand card by card after it's over.
+  final Map<Seat, List<PlayingCard>> originalHands;
+  final List<Trick> tricks;
+
   const HandResult({
     required this.contract,
     required this.trickPoints,
@@ -83,6 +93,9 @@ class HandResult {
     required this.contractMade,
     required this.rawTotals,
     required this.rounded,
+    this.auctionCalls = const [],
+    this.originalHands = const {},
+    this.tricks = const [],
   });
 }
 
@@ -114,11 +127,16 @@ class PilottaHand {
   /// live Belote/Pilotta call. [none] most of the time.
   BeloteAnnouncement lastBeloteAnnouncement = BeloteAnnouncement.none;
 
+  /// The auction that led to [contract] — kept only to pass through to
+  /// [HandResult.auctionCalls] for post-hand review; irrelevant to scoring.
+  final List<AuctionCall> auctionCalls;
+
   PilottaHand({
     required this.contract,
     required Map<Seat, List<PlayingCard>> initialHands,
     required Seat firstLeader,
     this.mustOvertrumpAllSuits = false,
+    this.auctionCalls = const [],
   })  : _originalHands = {
           for (final e in initialHands.entries)
             e.key: List.unmodifiable(List.of(e.value)),
@@ -443,6 +461,11 @@ class PilottaHand {
       contractMade: settlement.contractMade,
       rawTotals: settlement.rawTotals,
       rounded: rounded,
+      auctionCalls: auctionCalls,
+      originalHands: {
+        for (final seat in Seat.values) seat: originalHandOf(seat),
+      },
+      tricks: List.unmodifiable(completedTricks),
     );
   }
 }

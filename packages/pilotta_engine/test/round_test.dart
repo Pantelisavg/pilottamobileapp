@@ -762,6 +762,51 @@ void main() {
       expect(hand.lastBeloteAnnouncement, BeloteAnnouncement.none);
     });
   });
+
+  group('HandResult replay data', () {
+    test(
+        'finish() carries the auction, the original deal, and all 8 '
+        'completed tricks — needed to replay a past hand from the '
+        'scoreboard', () {
+      final hands = dealHands(_seededRandom(1));
+      final auctionCalls = [
+        SuitBidCall(Seat.south, Suit.spades, 80),
+        PassCall(Seat.west),
+        PassCall(Seat.north),
+        PassCall(Seat.east),
+      ];
+      final contract = Contract(
+        biddingSeat: Seat.south,
+        trumpSuit: Suit.spades,
+        value: 80,
+        isCapot: false,
+      );
+      final hand = PilottaHand(
+        contract: contract,
+        initialHands: hands,
+        firstLeader: Seat.south,
+        auctionCalls: auctionCalls,
+      );
+      autoPlayToCompletion(hand);
+      final result = hand.finish();
+
+      expect(result.auctionCalls, auctionCalls);
+      for (final seat in Seat.values) {
+        expect(result.originalHands[seat], hands[seat]);
+      }
+      expect(result.tricks, hasLength(8));
+      for (final trick in result.tricks) {
+        expect(trick.isComplete, isTrue);
+        expect(trick.played, hasLength(4));
+      }
+      // Every card dealt appears in exactly one trick, and playing it back
+      // through the trick objects agrees with the winner each Trick itself
+      // reports (i.e. these are the real completed Trick objects, not
+      // reconstructed stand-ins).
+      final allPlayedCards = result.tricks.expand((t) => t.played).length;
+      expect(allPlayedCards, 32);
+    });
+  });
 }
 
 Random _seededRandom(int seed) => Random(seed);

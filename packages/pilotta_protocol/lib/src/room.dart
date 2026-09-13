@@ -398,6 +398,7 @@ class PilottaRoom {
       initialHands: _originalHands!,
       firstLeader: _dealer.next,
       mustOvertrumpAllSuits: mustOvertrumpAllSuits,
+      auctionCalls: auction!.calls,
     );
     phase = RoomPhase.playing;
     banner = null;

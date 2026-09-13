@@ -15,6 +15,7 @@ import '../widgets/declaration_label.dart';
 import '../widgets/hand_sort.dart';
 import '../widgets/illegal_reason.dart';
 import '../widgets/fanned_hand.dart';
+import '../widgets/hand_replay_dialog.dart';
 import '../widgets/last_trick_dialog.dart';
 import '../widgets/player_avatar.dart';
 import '../widgets/playing_card_widget.dart';
@@ -181,6 +182,12 @@ class _ScoreHeader extends StatelessWidget {
             totalMine: board.totals[ourTeam]!,
             totalTheirs: board.totals[ourTeam.opponent]!,
             targetScore: board.targetScore,
+            onRowTap: (i) => showHandReplayDialog(
+              context,
+              result: board.history[i],
+              viewerSeat: controller.humanSeat,
+              handNumber: i + 1,
+            ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

@@ -146,6 +146,33 @@ DeclarationOutcome declarationOutcomeFromJson(Map<String, dynamic> json) {
   );
 }
 
+Map<String, dynamic> trickToJson(Trick trick) => {
+      'leader': trick.leader.name,
+      'trumpSuit': trick.trumpSuit.name,
+      'mustOvertrumpAllSuits': trick.mustOvertrumpAllSuits,
+      'played': [
+        for (final p in trick.played)
+          {'seat': p.seat.name, 'card': cardToJson(p.card)},
+      ],
+    };
+
+/// Rebuilds a completed [Trick] by replaying its plays in order through the
+/// real [Trick.play] — same "replay through the real engine calls" approach
+/// as [save.dart], rather than duplicating trick-winner bookkeeping here.
+Trick trickFromJson(Map<String, dynamic> json) {
+  final trick = Trick(
+    leader: Seat.values.byName(json['leader'] as String),
+    trumpSuit: Suit.values.byName(json['trumpSuit'] as String),
+    mustOvertrumpAllSuits: json['mustOvertrumpAllSuits'] as bool,
+  );
+  for (final playJson
+      in (json['played'] as List<dynamic>).cast<Map<String, dynamic>>()) {
+    trick.play(Seat.values.byName(playJson['seat'] as String),
+        cardFromJson(playJson['card'] as Map<String, dynamic>));
+  }
+  return trick;
+}
+
 Map<String, dynamic> handResultToJson(HandResult r) => {
       'contract': contractToJson(r.contract),
       'trickPoints': {
@@ -159,6 +186,14 @@ Map<String, dynamic> handResultToJson(HandResult r) => {
         'northSouth': r.rounded.northSouth,
         'eastWest': r.rounded.eastWest
       },
+      // Kept so a UI can show how the bidding went and replay the hand
+      // trick by trick after it's over — see HandResult's doc comments.
+      'auctionCalls': r.auctionCalls.map(auctionCallToJson).toList(),
+      'originalHands': {
+        for (final seat in Seat.values)
+          seat.name: cardsToJson(r.originalHands[seat] ?? const []),
+      },
+      'tricks': r.tricks.map(trickToJson).toList(),
     };
 
 HandResult handResultFromJson(Map<String, dynamic> json) {
@@ -181,5 +216,23 @@ HandResult handResultFromJson(Map<String, dynamic> json) {
     },
     rounded:
         RoundedScore(rounded['northSouth'] as int, rounded['eastWest'] as int),
+    // Optional/back-compat: absent on a HandResult saved before this field
+    // existed (e.g. an older "continue game later" save file).
+    auctionCalls: (json['auctionCalls'] as List<dynamic>?)
+            ?.map((e) => auctionCallFromJson(e as Map<String, dynamic>))
+            .toList() ??
+        const [],
+    originalHands: json['originalHands'] == null
+        ? const {}
+        : {
+            for (final e
+                in (json['originalHands'] as Map<String, dynamic>).entries)
+              Seat.values.byName(e.key):
+                  cardsFromJson(e.value as List<dynamic>),
+          },
+    tricks: (json['tricks'] as List<dynamic>?)
+            ?.map((e) => trickFromJson(e as Map<String, dynamic>))
+            .toList() ??
+        const [],
   );
 }

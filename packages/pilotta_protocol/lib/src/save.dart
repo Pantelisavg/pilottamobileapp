@@ -39,6 +39,9 @@ Map<String, dynamic> handToSaveJson(PilottaHand hand) {
       for (final seat in Seat.values)
         seat.name: hand.declarationStateOf(seat).name,
     },
+    // Carried through purely so the eventual HandResult still knows how the
+    // bidding went, for post-hand replay — see HandResult.auctionCalls.
+    'auctionCalls': hand.auctionCalls.map(auctionCallToJson).toList(),
   };
 }
 
@@ -59,6 +62,12 @@ PilottaHand handFromSaveJson(Map<String, dynamic> json,
     initialHands: originalHands,
     firstLeader: Seat.values.byName(json['firstLeader'] as String),
     mustOvertrumpAllSuits: mustOvertrumpAllSuits,
+    // Optional/back-compat: absent on a save file written before this field
+    // existed.
+    auctionCalls: (json['auctionCalls'] as List<dynamic>?)
+            ?.map((e) => auctionCallFromJson(e as Map<String, dynamic>))
+            .toList() ??
+        const [],
   );
 
   for (final playJson

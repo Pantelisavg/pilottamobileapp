@@ -46,6 +46,11 @@ void showScoreboardSheet(
   required int totalMine,
   required int totalTheirs,
   required int targetScore,
+
+  /// Called with a row's index into [rows] when it's tapped — lets the
+  /// caller open a full trick-by-trick replay of that hand. Rows aren't
+  /// tappable at all if this is left null.
+  void Function(int index)? onRowTap,
 }) {
   showModalBottomSheet<void>(
     context: context,
@@ -73,7 +78,11 @@ void showScoreboardSheet(
                     child: Text('Δεν έχει παιχτεί ακόμα καμία μοιρασιά.',
                         style: TextStyle(color: Colors.white54)),
                   )
-                : _Ledger(rows: rows, scrollController: scrollController),
+                : _Ledger(
+                    rows: rows,
+                    scrollController: scrollController,
+                    onRowTap: onRowTap,
+                  ),
           ),
           const Divider(color: Colors.white24, height: 1),
           Padding(
@@ -142,13 +151,29 @@ class _HeaderRow extends StatelessWidget {
 class _Ledger extends StatelessWidget {
   final List<ScoreRow> rows;
   final ScrollController scrollController;
+  final void Function(int index)? onRowTap;
 
-  const _Ledger({required this.rows, required this.scrollController});
+  const _Ledger({
+    required this.rows,
+    required this.scrollController,
+    this.onRowTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    var runningMine = 0;
-    var runningTheirs = 0;
+    // Precomputed up front, not accumulated inside itemBuilder — a lazy
+    // ListView doesn't guarantee items are built in index order, so mutating
+    // a running total across calls could show a stale/wrong sum.
+    final runningMine = <int>[];
+    final runningTheirs = <int>[];
+    var mine = 0;
+    var theirs = 0;
+    for (final r in rows) {
+      mine += r.roundedMine;
+      theirs += r.roundedTheirs;
+      runningMine.add(mine);
+      runningTheirs.add(theirs);
+    }
 
     return ListView.separated(
       controller: scrollController,
@@ -158,17 +183,14 @@ class _Ledger extends StatelessWidget {
           const Divider(color: Colors.white12, height: 1),
       itemBuilder: (context, i) {
         final r = rows[i];
-        runningMine += r.roundedMine;
-        runningTheirs += r.roundedTheirs;
-
-        return Padding(
+        final row = Padding(
           padding: const EdgeInsets.symmetric(vertical: 10),
           child: Row(
             children: [
               Expanded(
                 child: _TeamCell(
                   declarationPoints: r.declarationPointsMine,
-                  runningTotal: runningMine,
+                  runningTotal: runningMine[i],
                   changedThisHand: r.roundedMine != 0,
                 ),
               ),
@@ -179,13 +201,16 @@ class _Ledger extends StatelessWidget {
               Expanded(
                 child: _TeamCell(
                   declarationPoints: r.declarationPointsTheirs,
-                  runningTotal: runningTheirs,
+                  runningTotal: runningTheirs[i],
                   changedThisHand: r.roundedTheirs != 0,
                 ),
               ),
             ],
           ),
         );
+        return onRowTap == null
+            ? row
+            : InkWell(onTap: () => onRowTap!(i), child: row);
       },
     );
   }
