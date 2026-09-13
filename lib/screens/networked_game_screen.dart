@@ -451,7 +451,7 @@ class _OnlineOpponentSeat extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(top: 2),
                 child: Text(
-                    declarationsLabelFromJsonList(
+                    declarationsPointsLabelFromJsonList(
                         snapshot.revealedDeclarations[seat]!),
                     style: const TextStyle(
                         color: Colors.lightGreenAccent, fontSize: 9)),
@@ -609,7 +609,7 @@ class _OnlineDeclarationPanel extends StatelessWidget {
           Expanded(
             child: Text(
               canAnnounce
-                  ? 'Έχεις ${declarationLabelFromJson(declaration)} (${declaration['pointValue']} π.) — δήλωσέ το τώρα!'
+                  ? 'Έχεις ${declaration['pointValue']} — δήλωσέ το τώρα!'
                   : 'Αποκάλυψε τη δήλωσή σου πριν παίξεις, αλλιώς χάνεται!',
               style: const TextStyle(color: Colors.white, fontSize: 12),
             ),
@@ -647,8 +647,9 @@ class _OnlineHumanHand extends StatelessWidget {
     // (should be rare) comes back as an error banner.
     final legal = controller.legalPlaysForMe.toSet();
     final trick = controller.currentTrick;
-    final cardScale = context.watch<AppSettings>().cardScale;
-    final sorted = sortedForHand(cards);
+    final settings = context.watch<AppSettings>();
+    final cardScale = settings.cardScale;
+    final sorted = sortedForHand(cards, ascending: settings.handAscending);
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
@@ -744,7 +745,7 @@ class _OnlineHandSummaryOverlay extends StatelessWidget {
                   child: Text(
                     '${seatLabelRelativeTo(Seat.values.byName(entry.key), controller.mySeat!)} '
                     'ξέχασε να αποκαλύψει: '
-                    '${declarationLabelFromJson(entry.value as Map<String, dynamic>)} (χαμένο)',
+                    '${declarationPointsLabelFromJson(entry.value as Map<String, dynamic>)} (χαμένο)',
                     style:
                         const TextStyle(fontSize: 11, color: Colors.redAccent),
                   ),

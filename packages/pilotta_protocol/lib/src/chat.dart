@@ -5,8 +5,9 @@ enum ChatEntryKind {
   /// A free-text message the seat actually typed.
   chat,
 
-  /// The seat announced a (non-Pilotta) declaration during trick 1 — the
-  /// content isn't public yet, only the fact that they announced one.
+  /// The seat announced a (non-Pilotta) declaration during trick 1 — per
+  /// the rules, the point value is said out loud right away ([announcedValue]),
+  /// but which cards/suit it actually is stays hidden until reveal.
   declarationAnnounced,
 
   /// The seat revealed their previously-announced declaration(s) —
@@ -36,6 +37,10 @@ class ChatEntry {
   /// Set only for [ChatEntryKind.chat].
   final String? text;
 
+  /// Set only for [ChatEntryKind.declarationAnnounced] — the point value
+  /// (20/50/100/150/200) spoken out loud, per the rules; never the cards.
+  final int? announcedValue;
+
   /// Set only for [ChatEntryKind.declarationRevealed] — one or more, each
   /// the shape `declarationToJson` produces (see `declarationsLabelFromJsonList`
   /// in the app for rendering them without a pilotta_protocol dependency).
@@ -46,6 +51,7 @@ class ChatEntry {
     required this.seat,
     required this.kind,
     this.text,
+    this.announcedValue,
     this.declarations,
   });
 
@@ -54,6 +60,7 @@ class ChatEntry {
         'seat': seat.name,
         'kind': kind.name,
         if (text != null) 'text': text,
+        if (announcedValue != null) 'announcedValue': announcedValue,
         if (declarations != null) 'declarations': declarations,
       };
 
@@ -62,6 +69,7 @@ class ChatEntry {
         seat: Seat.values.byName(json['seat'] as String),
         kind: ChatEntryKind.values.byName(json['kind'] as String),
         text: json['text'] as String?,
+        announcedValue: json['announcedValue'] as int?,
         declarations: (json['declarations'] as List<dynamic>?)
             ?.cast<Map<String, dynamic>>(),
       );

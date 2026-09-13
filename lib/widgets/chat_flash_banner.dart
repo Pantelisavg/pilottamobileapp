@@ -6,6 +6,7 @@ import 'package:pilotta_protocol/pilotta_protocol.dart';
 
 import '../theme/pilotta_colors.dart';
 import 'chat_entry_label.dart';
+import 'declaration_cards_row.dart';
 
 /// Briefly flashes the latest declaration/Pilotta event to every player —
 /// otherwise a seat announcing or revealing (or calling Pilotta/Repilotta)
@@ -15,7 +16,8 @@ class ChatFlashBanner extends StatefulWidget {
   final List<ChatEntry> chatLog;
   final Seat viewerSeat;
 
-  const ChatFlashBanner({super.key, required this.chatLog, required this.viewerSeat});
+  const ChatFlashBanner(
+      {super.key, required this.chatLog, required this.viewerSeat});
 
   @override
   State<ChatFlashBanner> createState() => _ChatFlashBannerState();
@@ -53,7 +55,12 @@ class _ChatFlashBannerState extends State<ChatFlashBanner> {
         _lastSeenId = widget.chatLog.last.id;
         _hideTimer?.cancel();
         setState(() => _visible = entry);
-        _hideTimer = Timer(const Duration(seconds: 3), () {
+        // A reveal has actual cards to look at, not just a one-line call
+        // out — give it a little longer on screen.
+        final duration = entry.kind == ChatEntryKind.declarationRevealed
+            ? const Duration(seconds: 4)
+            : const Duration(seconds: 3);
+        _hideTimer = Timer(duration, () {
           if (mounted) setState(() => _visible = null);
         });
         return;
@@ -68,6 +75,7 @@ class _ChatFlashBannerState extends State<ChatFlashBanner> {
     if (!_seeded) _checkForNew();
     final entry = _visible;
     if (entry == null) return const SizedBox.shrink();
+    final isReveal = entry.kind == ChatEntryKind.declarationRevealed;
     return IgnorePointer(
       child: Align(
         alignment: Alignment.topCenter,
@@ -77,19 +85,29 @@ class _ChatFlashBannerState extends State<ChatFlashBanner> {
             opacity: 1,
             duration: const Duration(milliseconds: 200),
             child: Container(
+              constraints: const BoxConstraints(maxWidth: 320),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
                 color: PilottaColors.felt900.withValues(alpha: 0.92),
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(isReveal ? 16 : 20),
                 border: Border.all(color: PilottaColors.gold500, width: 1.5),
               ),
-              child: Text(
-                chatEntryLabel(entry, widget.viewerSeat),
-                style: const TextStyle(
-                  color: PilottaColors.gold500,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    chatEntryLabel(entry, widget.viewerSeat),
+                    style: const TextStyle(
+                      color: PilottaColors.gold500,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                  if (isReveal) ...[
+                    const SizedBox(height: 8),
+                    DeclarationCardsRow(declarations: entry.declarations!),
+                  ],
+                ],
               ),
             ),
           ),

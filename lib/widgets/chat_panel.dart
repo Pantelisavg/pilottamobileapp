@@ -5,6 +5,7 @@ import 'package:pilotta_protocol/pilotta_protocol.dart';
 import '../theme/pilotta_colors.dart';
 import '../theme/pilotta_typography.dart';
 import 'chat_entry_label.dart';
+import 'declaration_cards_row.dart';
 
 /// Opens the shared chat/event log as a bottom sheet. [listenable] is
 /// whatever drives the room's state (a [LocalGameController] or
@@ -88,7 +89,8 @@ class _ChatPanelState extends State<ChatPanel> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding:
+          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: SafeArea(
         top: false,
         child: Container(
@@ -112,20 +114,42 @@ class _ChatPanelState extends State<ChatPanel> {
                       )
                     : ListView.builder(
                         controller: _scrollController,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
                         itemCount: widget.chatLog.length,
                         itemBuilder: (context, i) {
                           final entry = widget.chatLog[i];
                           final isSystem = entry.kind != ChatEntryKind.chat;
+                          final isReveal =
+                              entry.kind == ChatEntryKind.declarationRevealed;
                           return Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 3),
-                            child: Text(
-                              chatEntryLabel(entry, widget.viewerSeat),
-                              style: TextStyle(
-                                color: isSystem ? PilottaColors.gold500 : PilottaColors.ink50,
-                                fontStyle: isSystem ? FontStyle.italic : FontStyle.normal,
-                                fontSize: 14,
-                              ),
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  chatEntryLabel(entry, widget.viewerSeat),
+                                  style: TextStyle(
+                                    color: isSystem
+                                        ? PilottaColors.gold500
+                                        : PilottaColors.ink50,
+                                    fontStyle: isSystem
+                                        ? FontStyle.italic
+                                        : FontStyle.normal,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                // A reveal stays visible here as the actual
+                                // cards, not just a text summary — this is
+                                // the permanent record of what was shown.
+                                if (isReveal) ...[
+                                  const SizedBox(height: 6),
+                                  DeclarationCardsRow(
+                                    declarations: entry.declarations!,
+                                    cardWidth: 28,
+                                  ),
+                                ],
+                              ],
                             ),
                           );
                         },
@@ -145,15 +169,19 @@ class _ChatPanelState extends State<ChatPanel> {
                           hintText: 'Γράψε ένα μήνυμα…',
                           hintStyle: TextStyle(color: PilottaColors.ink400),
                           counterText: '',
-                          border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(20))),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          border: OutlineInputBorder(
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(20))),
+                          contentPadding: EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 10),
                         ),
                         onSubmitted: (_) => _send(),
                         textInputAction: TextInputAction.send,
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.send, color: PilottaColors.gold500),
+                      icon:
+                          const Icon(Icons.send, color: PilottaColors.gold500),
                       onPressed: _send,
                     ),
                   ],

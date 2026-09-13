@@ -109,12 +109,15 @@ class PilottaRoom {
   // ------------------------------------------------------------------ chat
 
   void _pushChat(Seat seat, ChatEntryKind kind,
-      {String? text, List<Map<String, dynamic>>? declarations}) {
+      {String? text,
+      int? announcedValue,
+      List<Map<String, dynamic>>? declarations}) {
     _chatLog.add(ChatEntry(
       id: _nextChatId++,
       seat: seat,
       kind: kind,
       text: text,
+      announcedValue: announcedValue,
       declarations: declarations,
     ));
     if (_chatLog.length > _kMaxChatLog) _chatLog.removeAt(0);
@@ -295,7 +298,8 @@ class PilottaRoom {
       if (!isBotControlled(seat)) continue;
       if (h.canAnnounceDeclaration(seat)) {
         h.announceDeclaration(seat);
-        _pushChat(seat, ChatEntryKind.declarationAnnounced);
+        _pushChat(seat, ChatEntryKind.declarationAnnounced,
+            announcedValue: h.bestDeclarationOf(seat)!.pointValue());
       }
       if (h.canRevealDeclaration(seat)) {
         h.revealDeclaration(seat);
@@ -316,7 +320,8 @@ class PilottaRoom {
     if (isBotControlled(seat)) return 'Η θέση ελέγχεται από bot.';
     if (!h.canAnnounceDeclaration(seat)) return 'Δεν μπορείς να δηλώσεις τώρα.';
     h.announceDeclaration(seat);
-    _pushChat(seat, ChatEntryKind.declarationAnnounced);
+    _pushChat(seat, ChatEntryKind.declarationAnnounced,
+        announcedValue: h.bestDeclarationOf(seat)!.pointValue());
     _notify();
     return null;
   }

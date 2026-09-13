@@ -465,6 +465,9 @@ void main() {
       expect(room.chatLog.last.kind, ChatEntryKind.declarationAnnounced);
       expect(room.chatLog.last.seat, Seat.south);
       expect(room.chatLog.last.declarations, isNull);
+      // Only the point value is spoken on announce — South's best here is
+      // the 5-card clubs run (100), not the hearts 3-run (20).
+      expect(room.chatLog.last.announcedValue, 100);
 
       expect(room.handleRevealDeclaration(Seat.south), isNull);
       expect(room.chatLog.last.kind, ChatEntryKind.declarationRevealed);

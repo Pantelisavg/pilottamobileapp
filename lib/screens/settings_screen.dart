@@ -31,7 +31,8 @@ class SettingsScreen extends StatelessWidget {
                   children: [
                     IconButton(
                       onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.arrow_back, color: PilottaColors.ink50),
+                      icon: const Icon(Icons.arrow_back,
+                          color: PilottaColors.ink50),
                     ),
                     const SizedBox(width: PilottaSpacing.xs),
                     Text('Ρυθμίσεις', style: PilottaTypography.title),
@@ -41,19 +42,22 @@ class SettingsScreen extends StatelessWidget {
               Expanded(
                 child: ListView(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: PilottaSpacing.lg, vertical: PilottaSpacing.md),
+                      horizontal: PilottaSpacing.lg,
+                      vertical: PilottaSpacing.md),
                   children: [
                     _SectionLabel('Κανόνες'),
                     FeltPanel(
                       child: SwitchListTile(
                         contentPadding: EdgeInsets.zero,
-                        title: const Text('Υποχρεωτικό ανέβασμα σε όλα τα χρώματα',
+                        title: const Text(
+                            'Υποχρεωτικό ανέβασμα σε όλα τα χρώματα',
                             style: TextStyle(color: PilottaColors.ink50)),
                         subtitle: const Text(
                           'Παραλλαγή κανόνα: όποιος ακολουθεί χρώμα (όχι μόνο ατού) '
                           'πρέπει να ανέβει αν μπορεί. Ο βασικός κανόνας απαιτεί '
                           'ανέβασμα μόνο στο ατού.',
-                          style: TextStyle(color: PilottaColors.ink400, fontSize: 12),
+                          style: TextStyle(
+                              color: PilottaColors.ink400, fontSize: 12),
                         ),
                         value: settings.mustOvertrumpAllSuits,
                         activeThumbColor: PilottaColors.gold500,
@@ -69,7 +73,8 @@ class SettingsScreen extends StatelessWidget {
                             style: TextStyle(color: PilottaColors.ink50)),
                         subtitle: const Text(
                           'Ένα σύντομο ηχητικό/δόνηση σε κάθε φύλλο ή δήλωση.',
-                          style: TextStyle(color: PilottaColors.ink400, fontSize: 12),
+                          style: TextStyle(
+                              color: PilottaColors.ink400, fontSize: 12),
                         ),
                         value: settings.soundEnabled,
                         activeThumbColor: PilottaColors.gold500,
@@ -102,20 +107,43 @@ class SettingsScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: PilottaSpacing.lg),
+                    _SectionLabel('Σειρά φύλλων στο χέρι'),
+                    FeltPanel(
+                      child: SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Αντίστροφη σειρά',
+                            style: TextStyle(color: PilottaColors.ink50)),
+                        subtitle: Text(
+                          settings.handAscending
+                              ? 'Τώρα: 7, 8, 9, 10, Β, Ντ, Ρ, Α (χαμηλό προς υψηλό).'
+                              : 'Τώρα: Α, Ρ, Ντ, Β, 10, 9, 8, 7 (υψηλό προς χαμηλό).',
+                          style: const TextStyle(
+                              color: PilottaColors.ink400, fontSize: 12),
+                        ),
+                        value: settings.handAscending,
+                        activeThumbColor: PilottaColors.gold500,
+                        onChanged: (v) => settings.setHandAscending(v),
+                      ),
+                    ),
+                    const SizedBox(height: PilottaSpacing.lg),
                     _SectionLabel('Βοήθεια'),
                     FeltPanel(
                       onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const HowToPlayScreen()),
+                        MaterialPageRoute(
+                            builder: (_) => const HowToPlayScreen()),
                       ),
                       child: const Row(
                         children: [
-                          Icon(Icons.menu_book_outlined, color: PilottaColors.gold500),
+                          Icon(Icons.menu_book_outlined,
+                              color: PilottaColors.gold500),
                           SizedBox(width: PilottaSpacing.sm),
                           Expanded(
                             child: Text('Πώς παίζεται η Πιλόττα',
-                                style: TextStyle(color: PilottaColors.ink50, fontSize: 15)),
+                                style: TextStyle(
+                                    color: PilottaColors.ink50, fontSize: 15)),
                           ),
-                          Icon(Icons.chevron_right, color: PilottaColors.ink400),
+                          Icon(Icons.chevron_right,
+                              color: PilottaColors.ink400),
                         ],
                       ),
                     ),

@@ -288,7 +288,8 @@ class _OpponentSeat extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(top: 2),
               child: Text(
-                  declarationsLabel(controller.hand!.allDeclarationsOf(seat)),
+                  declarationsPointsLabel(
+                      controller.hand!.allDeclarationsOf(seat)),
                   style: const TextStyle(
                       color: Colors.lightGreenAccent, fontSize: 9)),
             ),
@@ -442,7 +443,7 @@ class _DeclarationPanel extends StatelessWidget {
           Expanded(
             child: Text(
               canAnnounce
-                  ? 'Έχεις ${declarationLabel(declaration)} (${declaration.pointValue()} π.) — δήλωσέ το τώρα!'
+                  ? 'Έχεις ${declaration.pointValue()} — δήλωσέ το τώρα!'
                   : 'Αποκάλυψε τη δήλωσή σου πριν παίξεις, αλλιώς χάνεται!',
               style: const TextStyle(color: Colors.white, fontSize: 12),
             ),
@@ -474,9 +475,10 @@ class _HumanHand extends StatelessWidget {
     final legal = controller.humanLegalPlays.toSet();
     final isMyTurn = controller.isHumanTurnToPlay;
     final trick = controller.hand?.currentTrick;
-    final cardScale = context.watch<AppSettings>().cardScale;
+    final settings = context.watch<AppSettings>();
+    final cardScale = settings.cardScale;
 
-    final sorted = sortedForHand(cards);
+    final sorted = sortedForHand(cards, ascending: settings.handAscending);
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
@@ -555,7 +557,7 @@ class _HandSummaryOverlay extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(vertical: 2),
                   child: Text(
                     '${seatLabelRelativeTo(entry.key, controller.humanSeat)} ξέχασε να αποκαλύψει: '
-                    '${declarationLabel(entry.value)} (χαμένο)',
+                    '${declarationPointsLabel(entry.value)} (χαμένο)',
                     style:
                         const TextStyle(fontSize: 11, color: Colors.redAccent),
                   ),

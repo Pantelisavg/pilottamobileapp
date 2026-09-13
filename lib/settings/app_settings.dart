@@ -8,6 +8,7 @@ class AppSettings extends ChangeNotifier {
   static const _kOvertrump = 'mustOvertrumpAllSuits';
   static const _kSound = 'soundEnabled';
   static const _kCardScale = 'cardScale';
+  static const _kHandAscending = 'handAscending';
 
   static const double minCardScale = 0.8;
   static const double maxCardScale = 1.3;
@@ -17,15 +18,18 @@ class AppSettings extends ChangeNotifier {
   bool _mustOvertrumpAllSuits;
   bool _soundEnabled;
   double _cardScale;
+  bool _handAscending;
 
   AppSettings._(
     this._prefs, {
     required bool mustOvertrumpAllSuits,
     required bool soundEnabled,
     required double cardScale,
+    required bool handAscending,
   })  : _mustOvertrumpAllSuits = mustOvertrumpAllSuits,
         _soundEnabled = soundEnabled,
-        _cardScale = cardScale;
+        _cardScale = cardScale,
+        _handAscending = handAscending;
 
   static Future<AppSettings> load() async {
     final prefs = await SharedPreferences.getInstance();
@@ -34,12 +38,18 @@ class AppSettings extends ChangeNotifier {
       mustOvertrumpAllSuits: prefs.getBool(_kOvertrump) ?? false,
       soundEnabled: prefs.getBool(_kSound) ?? true,
       cardScale: prefs.getDouble(_kCardScale) ?? 1.0,
+      handAscending: prefs.getBool(_kHandAscending) ?? false,
     );
   }
 
   bool get mustOvertrumpAllSuits => _mustOvertrumpAllSuits;
   bool get soundEnabled => _soundEnabled;
   double get cardScale => _cardScale;
+
+  /// Rank order within each suit group in a hand: false (default) shows
+  /// A, K, Q, J, 10, 9, 8, 7 (highest first); true reverses it to
+  /// 7, 8, 9, 10, J, Q, K, A.
+  bool get handAscending => _handAscending;
 
   Future<void> setMustOvertrumpAllSuits(bool value) async {
     if (value == _mustOvertrumpAllSuits) return;
@@ -61,5 +71,12 @@ class AppSettings extends ChangeNotifier {
     _cardScale = clamped;
     notifyListeners();
     await _prefs.setDouble(_kCardScale, clamped);
+  }
+
+  Future<void> setHandAscending(bool value) async {
+    if (value == _handAscending) return;
+    _handAscending = value;
+    notifyListeners();
+    await _prefs.setBool(_kHandAscending, value);
   }
 }
