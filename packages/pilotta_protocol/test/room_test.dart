@@ -125,6 +125,7 @@ void main() {
           random: Random(6),
           botBidDelay: const Duration(milliseconds: 5),
           botPlayDelay: const Duration(milliseconds: 5),
+          trickCollectDelay: const Duration(milliseconds: 5),
         );
         // Nobody joins as human — starting is only allowed with at least
         // one human claimed, so join one seat and mark it bot-controlled
@@ -157,7 +158,12 @@ void main() {
     /// [RoomPhase.playing] deterministically regardless of seed.
     PilottaRoom roomWithADeclaration() {
       for (var seed = 0; seed < 60; seed++) {
-        final room = PilottaRoom(roomCode: 'IIII', targetScore: 101, random: Random(seed));
+        final room = PilottaRoom(
+          roomCode: 'IIII',
+          targetScore: 101,
+          random: Random(seed),
+          trickCollectDelay: const Duration(milliseconds: 5),
+        );
         for (final name in ['A', 'B', 'C', 'D']) {
           room.join(name);
         }
@@ -179,54 +185,64 @@ void main() {
 
     test('a human seat can announce during trick 1 and reveal before their '
         'trick-2 card, and it counts towards the final score', () {
-      final room = roomWithADeclaration();
-      final seat = Seat.values.firstWhere((s) => room.hand!.bestDeclarationOf(s) != null);
-      final expectedPoints = room.hand!.bestDeclarationOf(seat)!.pointValue();
+      fakeAsync((async) {
+        final room = roomWithADeclaration();
+        final seat = Seat.values.firstWhere((s) => room.hand!.bestDeclarationOf(s) != null);
+        final expectedPoints = room.hand!.bestDeclarationOf(seat)!.pointValue();
 
-      expect(room.handleAnnounceDeclaration(seat), isNull);
-      expect(room.hand!.declarationStateOf(seat), DeclarationAnnounceState.announced);
+        expect(room.handleAnnounceDeclaration(seat), isNull);
+        expect(room.hand!.declarationStateOf(seat), DeclarationAnnounceState.announced);
 
-      // Play out trick 1 with everyone's first legal card.
-      while (room.hand!.completedTricks.isEmpty) {
-        final toAct = room.hand!.currentTrick.seatToPlay;
-        room.handlePlayCard(toAct, room.hand!.legalPlays(toAct).first);
-      }
+        // Play out trick 1 with everyone's first legal card. A completed
+        // trick sits on the table for [trickCollectDelay] before the next
+        // one starts, so elapse past that after every play.
+        while (room.hand!.completedTricks.isEmpty) {
+          final toAct = room.hand!.currentTrick.seatToPlay;
+          room.handlePlayCard(toAct, room.hand!.legalPlays(toAct).first);
+          async.elapse(const Duration(milliseconds: 10));
+        }
 
-      // Play trick 2 up to (not including) this seat's own turn, then reveal.
-      while (room.hand!.currentTrick.seatToPlay != seat) {
-        final toAct = room.hand!.currentTrick.seatToPlay;
-        room.handlePlayCard(toAct, room.hand!.legalPlays(toAct).first);
-      }
-      expect(room.handleRevealDeclaration(seat), isNull);
-      expect(room.hand!.declarationStateOf(seat), DeclarationAnnounceState.revealed);
+        // Play trick 2 up to (not including) this seat's own turn, then reveal.
+        while (room.hand!.currentTrick.seatToPlay != seat) {
+          final toAct = room.hand!.currentTrick.seatToPlay;
+          room.handlePlayCard(toAct, room.hand!.legalPlays(toAct).first);
+          async.elapse(const Duration(milliseconds: 10));
+        }
+        expect(room.handleRevealDeclaration(seat), isNull);
+        expect(room.hand!.declarationStateOf(seat), DeclarationAnnounceState.revealed);
 
-      // Play out the rest of the hand.
-      while (room.phase == RoomPhase.playing) {
-        final toAct = room.hand!.currentTrick.seatToPlay;
-        room.handlePlayCard(toAct, room.hand!.legalPlays(toAct).first);
-      }
+        // Play out the rest of the hand.
+        while (room.phase == RoomPhase.playing) {
+          final toAct = room.hand!.currentTrick.seatToPlay;
+          room.handlePlayCard(toAct, room.hand!.legalPlays(toAct).first);
+          async.elapse(const Duration(milliseconds: 10));
+        }
 
-      final result = room.lastHandResult!;
-      expect(result.declarations.bestPerSeat[seat]?.pointValue(), expectedPoints);
-      room.dispose();
+        final result = room.lastHandResult!;
+        expect(result.declarations.bestPerSeat[seat]?.pointValue(), expectedPoints);
+        room.dispose();
+      });
     });
 
     test('a human seat that forgets to reveal forfeits the declaration', () {
-      final room = roomWithADeclaration();
-      final seat = Seat.values.firstWhere((s) => room.hand!.bestDeclarationOf(s) != null);
+      fakeAsync((async) {
+        final room = roomWithADeclaration();
+        final seat = Seat.values.firstWhere((s) => room.hand!.bestDeclarationOf(s) != null);
 
-      expect(room.handleAnnounceDeclaration(seat), isNull);
+        expect(room.handleAnnounceDeclaration(seat), isNull);
 
-      // Play the whole hand out without ever revealing.
-      while (room.phase == RoomPhase.playing) {
-        final toAct = room.hand!.currentTrick.seatToPlay;
-        room.handlePlayCard(toAct, room.hand!.legalPlays(toAct).first);
-      }
+        // Play the whole hand out without ever revealing.
+        while (room.phase == RoomPhase.playing) {
+          final toAct = room.hand!.currentTrick.seatToPlay;
+          room.handlePlayCard(toAct, room.hand!.legalPlays(toAct).first);
+          async.elapse(const Duration(milliseconds: 10));
+        }
 
-      final result = room.lastHandResult!;
-      expect(result.declarations.bestPerSeat[seat], isNull);
-      expect(result.declarations.forfeitedPerSeat[seat], isNotNull);
-      room.dispose();
+        final result = room.lastHandResult!;
+        expect(result.declarations.bestPerSeat[seat], isNull);
+        expect(result.declarations.forfeitedPerSeat[seat], isNotNull);
+        room.dispose();
+      });
     });
 
     test('a bot-controlled seat cannot announce or reveal directly — bots '

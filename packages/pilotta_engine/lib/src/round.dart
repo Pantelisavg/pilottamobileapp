@@ -140,6 +140,9 @@ class PilottaHand {
   bool get isHandComplete => completedTricks.length == 8;
 
   List<PlayingCard> legalPlays(Seat seat) {
+    // A just-finished trick sits on the table (see [isAwaitingNextTrick])
+    // until [startNextTrick] is called — nobody may play into it meanwhile.
+    if (currentTrick.isComplete) return const [];
     if (seat != currentTrick.seatToPlay) return const [];
     return currentTrick.legalPlays(_hands[seat]!);
   }
@@ -214,15 +217,28 @@ class PilottaHand {
       _tricksWon[team] = _tricksWon[team]! + 1;
       _lastTrickTeam = team;
       completedTricks.add(finishedTrick);
-      if (!isHandComplete) {
-        _nextLeader = winner;
-        _currentTrick = Trick(
-          leader: _nextLeader,
-          trumpSuit: contract.trumpSuit,
-          mustOvertrumpAllSuits: mustOvertrumpAllSuits,
-        );
-      }
+      _nextLeader = winner;
+      // The finished trick is left in place (all 4 cards still visible via
+      // [currentTrick]) rather than immediately replaced — callers give
+      // players a moment to actually see it before calling [startNextTrick].
     }
+  }
+
+  /// Whether the just-finished trick is still sitting on the table, waiting
+  /// for [startNextTrick] to clear it and deal in the next one.
+  bool get isAwaitingNextTrick => currentTrick.isComplete && !isHandComplete;
+
+  /// Clears the completed trick off the table and starts the next one, led
+  /// by whoever won the last trick. Only valid while [isAwaitingNextTrick].
+  void startNextTrick() {
+    if (!isAwaitingNextTrick) {
+      throw StateError('No completed trick waiting to be cleared.');
+    }
+    _currentTrick = Trick(
+      leader: _nextLeader,
+      trumpSuit: contract.trumpSuit,
+      mustOvertrumpAllSuits: mustOvertrumpAllSuits,
+    );
   }
 
   DeclarationOutcome _resolveDeclarations() {

@@ -13,6 +13,7 @@ void main() {
       final controller = LocalGameController(
         targetScore: 101,
         random: Random(7),
+        trickCollectDelay: const Duration(milliseconds: 5),
       );
 
       var guard = 0;
@@ -45,7 +46,11 @@ void main() {
 
   test('every hand in a completed match scores a legal trick-point split', () {
     fakeAsync((async) {
-      final controller = LocalGameController(targetScore: 101, random: Random(3));
+      final controller = LocalGameController(
+        targetScore: 101,
+        random: Random(3),
+        trickCollectDelay: const Duration(milliseconds: 5),
+      );
 
       var guard = 0;
       while (controller.phase != RoomPhase.matchOver && guard++ < 5000) {

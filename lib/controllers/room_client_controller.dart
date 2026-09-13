@@ -140,6 +140,10 @@ abstract class RoomClientController extends ChangeNotifier {
     final trick = currentTrick;
     final snap = snapshot;
     if (trick == null || snap == null) return const [];
+    // A just-finished trick stays on the table for a few seconds (see
+    // PilottaRoom.trickCollectDelay) before the server starts the next one
+    // — nobody may play into it meanwhile.
+    if (trick.isComplete) return const [];
     return trick.legalPlays(snap.yourHand);
   }
 }

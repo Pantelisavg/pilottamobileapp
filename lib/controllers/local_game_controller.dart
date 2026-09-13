@@ -19,11 +19,13 @@ class LocalGameController extends ChangeNotifier {
     String playerName = 'Εσύ',
     Random? random,
     bool mustOvertrumpAllSuits = false,
+    Duration trickCollectDelay = const Duration(milliseconds: 3200),
   })  : _room = PilottaRoom(
           roomCode: 'LOCAL',
           targetScore: targetScore,
           random: random,
           mustOvertrumpAllSuits: mustOvertrumpAllSuits,
+          trickCollectDelay: trickCollectDelay,
         ),
         humanSeat = Seat.south {
     _room.addListener(notifyListeners);
@@ -53,7 +55,11 @@ class LocalGameController extends ChangeNotifier {
       phase == RoomPhase.bidding && auction != null && auction!.seatToAct == humanSeat && !auction!.isComplete;
 
   bool get isHumanTurnToPlay =>
-      phase == RoomPhase.playing && hand != null && !hand!.isHandComplete && hand!.currentTrick.seatToPlay == humanSeat;
+      phase == RoomPhase.playing &&
+      hand != null &&
+      !hand!.isHandComplete &&
+      !hand!.currentTrick.isComplete &&
+      hand!.currentTrick.seatToPlay == humanSeat;
 
   List<PlayingCard> get humanLegalPlays =>
       isHumanTurnToPlay ? hand!.legalPlays(humanSeat) : const [];

@@ -242,7 +242,9 @@ class _OpponentSeat extends StatelessWidget {
   Widget build(BuildContext context) {
     final isActive = controller.phase == RoomPhase.bidding
         ? controller.auction?.seatToAct == seat
-        : controller.hand?.currentTrick.seatToPlay == seat;
+        : (controller.hand != null &&
+            !controller.hand!.currentTrick.isComplete &&
+            controller.hand!.currentTrick.seatToPlay == seat);
     final cardCount = controller.handOf(seat).length;
     final isPartner = seat == controller.humanSeat.partner;
     final declState = controller.hand?.declarationStateOf(seat);

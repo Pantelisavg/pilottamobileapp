@@ -29,6 +29,11 @@ class PilottaRoom {
   final Duration botBidDelay;
   final Duration botPlayDelay;
 
+  /// How long a just-completed trick stays visible on the table (all 4
+  /// cards showing) before it's swept away and the next trick starts —
+  /// otherwise the 4th card would vanish the instant it's played.
+  final Duration trickCollectDelay;
+
   /// House-rule variant threaded down to every hand's tricks — see
   /// [Trick.mustOvertrumpAllSuits]. Fixed for the lifetime of the room.
   final bool mustOvertrumpAllSuits;
@@ -51,6 +56,7 @@ class PilottaRoom {
   final Set<Seat> readyForNextHand = {};
 
   Timer? _pendingBotMove;
+  Timer? _pendingTrickCollect;
   final List<void Function()> _listeners = [];
   bool _disposed = false;
 
@@ -60,6 +66,7 @@ class PilottaRoom {
     Random? random,
     this.botBidDelay = const Duration(milliseconds: 500),
     this.botPlayDelay = const Duration(milliseconds: 600),
+    this.trickCollectDelay = const Duration(milliseconds: 3200),
     this.mustOvertrumpAllSuits = false,
   }) : _random = random ?? Random() {
     _bot = SimpleBot(_random);
@@ -80,6 +87,7 @@ class PilottaRoom {
   void dispose() {
     _disposed = true;
     _pendingBotMove?.cancel();
+    _pendingTrickCollect?.cancel();
     _listeners.clear();
   }
 
@@ -282,6 +290,9 @@ class PilottaRoom {
       _finishHand();
       return;
     }
+    // A finished trick is still sitting on the table — [_afterCardPlayed]
+    // already has a timer scheduled to clear it and resume play.
+    if (h.currentTrick.isComplete) return;
     final toAct = h.currentTrick.seatToPlay;
     if (!isBotControlled(toAct)) return;
 
@@ -291,7 +302,32 @@ class PilottaRoom {
       final card = _bot.decidePlay(h.currentTrick, h.handOf(toAct), h.contract.trumpSuit);
       h.playCard(toAct, card);
       _notify();
+      _afterCardPlayed();
+    });
+  }
+
+  /// Called right after any seat (human or bot) plays a card. If that
+  /// completed the trick, holds it on the table for [trickCollectDelay]
+  /// before clearing it (or ending the hand); otherwise just keeps play
+  /// moving immediately.
+  void _afterCardPlayed() {
+    final h = hand;
+    if (h == null) return;
+    if (!h.currentTrick.isComplete) {
       _maybeRunBotPlay();
+      return;
+    }
+    _pendingBotMove?.cancel();
+    _pendingTrickCollect?.cancel();
+    _pendingTrickCollect = Timer(trickCollectDelay, () {
+      if (_disposed || hand != h) return;
+      if (h.isHandComplete) {
+        _finishHand();
+      } else {
+        h.startNextTrick();
+        _notify();
+        _maybeRunBotPlay();
+      }
     });
   }
 
@@ -299,11 +335,12 @@ class PilottaRoom {
   String? handlePlayCard(Seat seat, PlayingCard card) {
     if (phase != RoomPhase.playing || hand == null) return 'Δεν παίζεται φύλλο τώρα.';
     if (isBotControlled(seat)) return 'Η θέση ελέγχεται από bot.';
+    if (hand!.currentTrick.isComplete) return 'Η μπάζα μόλις ολοκληρώθηκε — περίμενε λίγο.';
     if (hand!.currentTrick.seatToPlay != seat) return 'Δεν είναι η σειρά σου.';
     if (!hand!.legalPlays(seat).contains(card)) return 'Μη έγκυρο φύλλο.';
     hand!.playCard(seat, card);
     _notify();
-    _maybeRunBotPlay();
+    _afterCardPlayed();
     return null;
   }
 
@@ -382,7 +419,10 @@ class PilottaRoom {
       auctionCalls: auction?.calls.map(auctionCallToJson).toList(),
       seatToAct: switch (phase) {
         RoomPhase.bidding => auction?.seatToAct,
-        RoomPhase.playing => h?.currentTrick.seatToPlay,
+        // null while a just-finished trick is still on the table (see
+        // trickCollectDelay) — nobody's turn during that pause.
+        RoomPhase.playing =>
+          (h != null && !h.currentTrick.isComplete) ? h.currentTrick.seatToPlay : null,
         _ => null,
       },
       contract: h != null ? contractToJson(h.contract) : null,

@@ -23,6 +23,10 @@ void autoPlayToCompletion(PilottaHand hand, {bool autoDeclare = true}) {
     }
   }
   while (!hand.isHandComplete) {
+    if (hand.currentTrick.isComplete) {
+      hand.startNextTrick();
+      continue;
+    }
     final seat = hand.currentTrick.seatToPlay;
     final card = hand.legalPlays(seat).first;
     hand.playCard(seat, card);
@@ -403,6 +407,10 @@ void main() {
         final seat = hand.currentTrick.seatToPlay;
         hand.playCard(seat, hand.legalPlays(seat).first);
       }
+      // Immediately clear the table for the test's sake — the few-second
+      // on-table pause is a room/UI-layer concern (PilottaRoom.trickCollectDelay),
+      // not something the bare engine enforces.
+      if (!hand.isHandComplete) hand.startNextTrick();
     }
 
     test('can only be announced during trick 1, and only once', () {
@@ -436,6 +444,10 @@ void main() {
       hand.playCard(Seat.south, hand.legalPlays(Seat.south).first);
 
       while (!hand.isHandComplete) {
+        if (hand.currentTrick.isComplete) {
+          hand.startNextTrick();
+          continue;
+        }
         final seat = hand.currentTrick.seatToPlay;
         hand.playCard(seat, hand.legalPlays(seat).first);
       }
@@ -465,6 +477,10 @@ void main() {
       expect(hand.canRevealDeclaration(Seat.south), isFalse);
 
       while (!hand.isHandComplete) {
+        if (hand.currentTrick.isComplete) {
+          hand.startNextTrick();
+          continue;
+        }
         final seat = hand.currentTrick.seatToPlay;
         hand.playCard(seat, hand.legalPlays(seat).first);
       }
