@@ -8,6 +8,7 @@ import '../controllers/room_client_controller.dart';
 import '../settings/app_settings.dart';
 import '../settings/sound.dart';
 import '../widgets/auction_call_label.dart';
+import '../widgets/auction_history_dialog.dart';
 import '../widgets/bidding_panel.dart';
 import '../widgets/chat_flash_banner.dart';
 import '../widgets/chat_panel.dart';
@@ -405,6 +406,22 @@ class _OnlineTableArea extends StatelessWidget {
                   viewerSeat: me,
                 );
               },
+            ),
+          ),
+        if (snapshot.phase == RoomPhase.playing &&
+            (controller.auction?.calls.isNotEmpty ?? false))
+          Positioned(
+            top: 0,
+            right: 0,
+            child: IconButton(
+              tooltip: 'Πώς πήγαν οι δηλώσεις',
+              icon: const Icon(Icons.gavel, color: Colors.white70),
+              onPressed: () => showAuctionHistoryDialog(
+                context,
+                calls: controller.auction!.calls,
+                viewerSeat: me,
+                seatLabel: (seat) => seatLabelRelativeTo(seat, me),
+              ),
             ),
           ),
       ],
