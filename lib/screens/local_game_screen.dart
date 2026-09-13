@@ -8,6 +8,8 @@ import '../settings/app_settings.dart';
 import '../settings/sound.dart';
 import '../widgets/auction_call_label.dart';
 import '../widgets/bidding_panel.dart';
+import '../widgets/chat_flash_banner.dart';
+import '../widgets/chat_panel.dart';
 import '../widgets/declaration_label.dart';
 import '../widgets/hand_sort.dart';
 import '../widgets/illegal_reason.dart';
@@ -72,6 +74,19 @@ class _GameView extends StatelessWidget {
         foregroundColor: Colors.white,
         title: _ScoreHeader(controller: controller),
         titleSpacing: 12,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.chat_bubble_outline),
+            tooltip: 'Συνομιλία',
+            onPressed: () => showChatPanel(
+              context,
+              listenable: controller,
+              chatLogOf: () => controller.chatLog,
+              viewerSeat: controller.humanSeat,
+              onSend: controller.sendChat,
+            ),
+          ),
+        ],
       ),
       body: SafeArea(
         child: Stack(
@@ -111,6 +126,7 @@ class _GameView extends StatelessWidget {
               _HandSummaryOverlay(controller: controller),
             if (controller.phase == RoomPhase.matchOver)
               _MatchOverOverlay(controller: controller),
+            ChatFlashBanner(chatLog: controller.chatLog, viewerSeat: controller.humanSeat),
           ],
         ),
       ),

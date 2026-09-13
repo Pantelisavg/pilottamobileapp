@@ -84,11 +84,18 @@ abstract class RoomClientController extends ChangeNotifier {
 
   void continueAfterHand() => sendMessage(const ReadyForNextHandMessage());
 
+  /// Sends a free-text chat message, visible to every seat.
+  void sendChat(String text) => sendMessage(SendChatMessage(text));
+
   void leaveRoom() => sendMessage(const LeaveMessage());
 
   // ------------------------------------------------------------ derived
 
   bool get inRoom => mySeat != null && snapshot != null;
+
+  /// The room's shared chat/event log — player messages interleaved with
+  /// declaration and Pilotta/Repilotta announcements, oldest first.
+  List<ChatEntry> get chatLog => snapshot?.chatLog ?? const [];
 
   bool get isHost => mySeat == Seat.south;
 

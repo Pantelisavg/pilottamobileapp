@@ -86,6 +86,14 @@ class LocalGameController extends ChangeNotifier {
   /// [canRevealDeclaration]).
   void revealDeclaration() => _room.handleRevealDeclaration(humanSeat);
 
+  /// The room's shared chat/event log — see [PilottaRoom.chatLog]. In local
+  /// hotseat play this is mostly declaration/Pilotta announcements, since
+  /// there's nobody else at the table to actually type to.
+  List<ChatEntry> get chatLog => _room.chatLog;
+
+  /// Posts a free-text chat message as the human seat.
+  void sendChat(String text) => _room.sendChat(humanSeat, text);
+
   /// Called by the UI after showing the hand summary, to deal the next hand
   /// (or end the match if the target score has been reached).
   void continueAfterHand() => _room.markReadyForNextHand(humanSeat);

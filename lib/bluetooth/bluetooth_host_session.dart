@@ -128,6 +128,12 @@ class BluetoothHostSession extends RoomClientController {
       case ReadyForNextHandMessage():
         final seat = _endpointSeat[endpointId];
         if (seat != null) room.markReadyForNextHand(seat);
+      case SendChatMessage():
+        final seat = _endpointSeat[endpointId];
+        final error = seat == null ? 'Άγνωστη θέση.' : room.sendChat(seat, message.text);
+        if (error != null) {
+          _transport.sendMessage(endpointId, jsonEncode(ServerErrorMessage(error).toJson()));
+        }
       case LeaveMessage():
         final seat = _endpointSeat.remove(endpointId);
         if (seat != null) room.leave(seat);
@@ -158,6 +164,8 @@ class BluetoothHostSession extends RoomClientController {
         room.handleRevealDeclaration(mySeat!);
       case ReadyForNextHandMessage():
         room.markReadyForNextHand(mySeat!);
+      case SendChatMessage():
+        room.sendChat(mySeat!, message.text);
       case LeaveMessage():
         room.leave(mySeat!);
       case CreateRoomMessage():

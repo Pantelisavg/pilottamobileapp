@@ -9,6 +9,8 @@ import '../settings/app_settings.dart';
 import '../settings/sound.dart';
 import '../widgets/auction_call_label.dart';
 import '../widgets/bidding_panel.dart';
+import '../widgets/chat_flash_banner.dart';
+import '../widgets/chat_panel.dart';
 import '../widgets/declaration_label.dart';
 import '../widgets/fanned_hand.dart';
 import '../widgets/hand_sort.dart';
@@ -217,6 +219,19 @@ class _OnlineTable extends StatelessWidget {
         foregroundColor: Colors.white,
         title: _OnlineScoreHeader(controller: controller),
         titleSpacing: 12,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.chat_bubble_outline),
+            tooltip: 'Συνομιλία',
+            onPressed: () => showChatPanel(
+              context,
+              listenable: controller,
+              chatLogOf: () => controller.chatLog,
+              viewerSeat: me,
+              onSend: controller.sendChat,
+            ),
+          ),
+        ],
       ),
       body: SafeArea(
         child: Stack(
@@ -258,6 +273,7 @@ class _OnlineTable extends StatelessWidget {
               _OnlineMatchOverOverlay(controller: controller),
             if (controller.status == ConnectionStatus.disconnected)
               _DisconnectOverlay(controller: controller),
+            ChatFlashBanner(chatLog: controller.chatLog, viewerSeat: me),
           ],
         ),
       ),
@@ -397,56 +413,65 @@ class _OnlineOpponentSeat extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.all(8),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          PlayerAvatar(
-            label: seatLabelRelativeTo(seat, controller.mySeat!),
-            cardCount: cardCount,
-            isActive: isActive,
-            isPartner: isPartner,
-            isBot: info.isBot,
-            disconnected: !info.isBot && !info.connected,
-            // A purely cosmetic pace cue — nothing auto-plays if it runs
-            // out, there is no server-side turn timeout.
-            timerOverlay: isActive && !info.isBot && info.connected
-                ? TurnTimerRing(
-                    key: ValueKey('${snapshot.phase.name}|${snapshot.seatToAct?.name}'),
-                    active: true,
-                    size: 66,
-                  )
-                : null,
-          ),
-          if (declState == DeclarationAnnounceState.announced.name)
-            const Padding(
-              padding: EdgeInsets.only(top: 2),
-              child: Text('Δήλωσε — αναμένεται αποκάλυψη',
-                  style: TextStyle(color: Colors.amberAccent, fontSize: 9)),
-            )
-          else if (declState == DeclarationAnnounceState.revealed.name)
-            Padding(
-              padding: const EdgeInsets.only(top: 2),
-              child: Text(
-                  declarationLabelFromJson(
-                      snapshot.revealedDeclarations[seat]!),
-                  style: const TextStyle(
-                      color: Colors.lightGreenAccent, fontSize: 9)),
+      // The table area's height isn't divided into a fixed slot per seat —
+      // an opponent's avatar+cards column can outgrow whatever's actually
+      // left over once the bidding panel (or other overlays) claim their
+      // share, especially on a small screen. Shrink to fit rather than
+      // overflow, instead of trying to fix its natural size.
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            PlayerAvatar(
+              label: seatLabelRelativeTo(seat, controller.mySeat!),
+              cardCount: cardCount,
+              isActive: isActive,
+              isPartner: isPartner,
+              isBot: info.isBot,
+              disconnected: !info.isBot && !info.connected,
+              // A purely cosmetic pace cue — nothing auto-plays if it runs
+              // out, there is no server-side turn timeout.
+              timerOverlay: isActive && !info.isBot && info.connected
+                  ? TurnTimerRing(
+                      key: ValueKey(
+                          '${snapshot.phase.name}|${snapshot.seatToAct?.name}'),
+                      active: true,
+                      size: 66,
+                    )
+                  : null,
             ),
-          const SizedBox(height: 4),
-          SizedBox(
-            height: 46,
-            width: 92,
-            child: Stack(
-              children: [
-                for (var i = 0; i < cardCount; i++)
-                  Positioned(
-                    left: i * 9.0,
-                    child: const PlayingCardWidget(faceUp: false, width: 30),
-                  ),
-              ],
+            if (declState == DeclarationAnnounceState.announced.name)
+              const Padding(
+                padding: EdgeInsets.only(top: 2),
+                child: Text('Δήλωσε — αναμένεται αποκάλυψη',
+                    style: TextStyle(color: Colors.amberAccent, fontSize: 9)),
+              )
+            else if (declState == DeclarationAnnounceState.revealed.name)
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Text(
+                    declarationLabelFromJson(
+                        snapshot.revealedDeclarations[seat]!),
+                    style: const TextStyle(
+                        color: Colors.lightGreenAccent, fontSize: 9)),
+              ),
+            const SizedBox(height: 4),
+            SizedBox(
+              height: 46,
+              width: 92,
+              child: Stack(
+                children: [
+                  for (var i = 0; i < cardCount; i++)
+                    Positioned(
+                      left: i * 9.0,
+                      child: const PlayingCardWidget(faceUp: false, width: 30),
+                    ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -643,7 +668,8 @@ class _OnlineHumanHand extends StatelessWidget {
             legal: legal,
             isMyTurn: isMyTurn,
             cardScale: cardScale,
-            reasonFor: (card) => trick != null ? illegalPlayReason(trick, cards, card) : null,
+            reasonFor: (card) =>
+                trick != null ? illegalPlayReason(trick, cards, card) : null,
             onTap: (card) {
               playTapSound(context.read<AppSettings>());
               controller.playCard(card);

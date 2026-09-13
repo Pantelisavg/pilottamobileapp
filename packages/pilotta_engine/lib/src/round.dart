@@ -7,6 +7,11 @@ import 'trick.dart';
 
 const int kBelotePoints = 20;
 
+/// A live "Pilotta"/"Repilotta" call, said the instant the holder of the
+/// King+Queen of trump actually plays the first (Pilotta) or second
+/// (Repilotta) of the two — see [PilottaHand.lastBeloteAnnouncement].
+enum BeloteAnnouncement { none, pilotta, repilotta }
+
 /// Tracks whether a player has announced and/or revealed a non-Pilotta
 /// declaration in time. Belote/Pilotta (King+Queen of trump) is exempt from
 /// this timing entirely — it's declared live as those two cards are played,
@@ -96,6 +101,11 @@ class PilottaHand {
   Trick? _currentTrick;
   Seat _nextLeader;
   final List<Trick> completedTricks = [];
+  final Map<Seat, int> _beloteCardsPlayed = {};
+
+  /// Set by every [playCard] call: whether that exact card completed a
+  /// live Belote/Pilotta call. [none] most of the time.
+  BeloteAnnouncement lastBeloteAnnouncement = BeloteAnnouncement.none;
 
   PilottaHand({
     required this.contract,
@@ -136,6 +146,17 @@ class PilottaHand {
   DeclarationAnnounceState declarationStateOf(Seat seat) => _declarationState[seat]!;
 
   Trick get currentTrick => _currentTrick!;
+
+  /// Whether [seat] was originally dealt both the King and Queen of trump —
+  /// the Belote combination, live-announced via [lastBeloteAnnouncement] as
+  /// each of the two is actually played, independent of (and exempt from)
+  /// the announce/reveal timing that applies to every other declaration.
+  bool holdsBelote(Seat seat) {
+    final trump = contract.trumpSuit;
+    final hand = _originalHands[seat]!;
+    return hand.any((c) => c.suit == trump && c.rank == Rank.king) &&
+        hand.any((c) => c.suit == trump && c.rank == Rank.queen);
+  }
 
   bool get isHandComplete => completedTricks.length == 8;
 
@@ -208,6 +229,16 @@ class PilottaHand {
 
     currentTrick.play(seat, card);
     hand.remove(card);
+
+    lastBeloteAnnouncement = BeloteAnnouncement.none;
+    if (card.suit == contract.trumpSuit &&
+        (card.rank == Rank.king || card.rank == Rank.queen) &&
+        holdsBelote(seat)) {
+      final count = (_beloteCardsPlayed[seat] ?? 0) + 1;
+      _beloteCardsPlayed[seat] = count;
+      lastBeloteAnnouncement =
+          count == 1 ? BeloteAnnouncement.pilotta : BeloteAnnouncement.repilotta;
+    }
 
     if (currentTrick.isComplete) {
       final finishedTrick = currentTrick;

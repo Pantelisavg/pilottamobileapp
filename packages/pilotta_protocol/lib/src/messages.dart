@@ -1,5 +1,6 @@
 import 'package:pilotta_engine/pilotta_engine.dart';
 
+import 'chat.dart';
 import 'codec.dart';
 
 /// Messages a client sends. The server always knows which connection (and
@@ -35,6 +36,8 @@ sealed class ClientMessage {
         return const RevealDeclarationMessage();
       case 'ready_for_next_hand':
         return const ReadyForNextHandMessage();
+      case 'send_chat':
+        return SendChatMessage(json['text'] as String);
       case 'leave':
         return const LeaveMessage();
       default:
@@ -120,6 +123,15 @@ class ReadyForNextHandMessage extends ClientMessage {
   const ReadyForNextHandMessage();
   @override
   Map<String, dynamic> toJson() => {'type': 'ready_for_next_hand'};
+}
+
+/// A free-text chat message the sender typed — appended to the room's
+/// shared [ChatEntry] log, visible to every seat.
+class SendChatMessage extends ClientMessage {
+  final String text;
+  const SendChatMessage(this.text);
+  @override
+  Map<String, dynamic> toJson() => {'type': 'send_chat', 'text': text};
 }
 
 class LeaveMessage extends ClientMessage {
@@ -241,6 +253,11 @@ class RoomSnapshotMessage extends ServerMessage {
   final Set<Seat> readyForNextHand;
   final String? winnerTeam;
 
+  /// The room's shared chat/event log (player messages + declaration and
+  /// Pilotta/Repilotta announcements), oldest first. Every viewer sees the
+  /// same entries — capped server-side, see `PilottaRoom._chatLog`.
+  final List<ChatEntry> chatLog;
+
   const RoomSnapshotMessage({
     required this.roomCode,
     required this.yourSeat,
@@ -269,6 +286,7 @@ class RoomSnapshotMessage extends ServerMessage {
     this.lastHandResult,
     this.readyForNextHand = const {},
     this.winnerTeam,
+    this.chatLog = const [],
   });
 
   @override
@@ -303,6 +321,7 @@ class RoomSnapshotMessage extends ServerMessage {
         'lastHandResult': lastHandResult,
         'readyForNextHand': readyForNextHand.map((s) => s.name).toList(),
         'winnerTeam': winnerTeam,
+        'chatLog': chatLog.map((e) => e.toJson()).toList(),
       };
 
   static RoomSnapshotMessage fromJson(Map<String, dynamic> json) {
@@ -353,6 +372,9 @@ class RoomSnapshotMessage extends ServerMessage {
         for (final s in (json['readyForNextHand'] as List<dynamic>)) Seat.values.byName(s as String),
       },
       winnerTeam: json['winnerTeam'] as String?,
+      chatLog: (json['chatLog'] as List<dynamic>? ?? const [])
+          .map((e) => ChatEntry.fromJson(e as Map<String, dynamic>))
+          .toList(),
     );
   }
 }

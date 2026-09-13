@@ -347,4 +347,105 @@ void main() {
       room.dispose();
     });
   });
+
+  group('Chat', () {
+    test('sendChat appends a message visible in chatLog, and validates input', () {
+      final room = PilottaRoom(roomCode: 'MMMM', targetScore: 101, random: Random(1));
+      final south = room.join('A')!;
+      room.join('B');
+      room.join('C');
+      room.join('D');
+      room.start();
+
+      expect(room.sendChat(south, ''), isNotNull);
+      expect(room.chatLog, isEmpty);
+
+      expect(room.sendChat(south, 'Γεια σας!'), isNull);
+      expect(room.chatLog, hasLength(1));
+      expect(room.chatLog.single.kind, ChatEntryKind.chat);
+      expect(room.chatLog.single.seat, south);
+      expect(room.chatLog.single.text, 'Γεια σας!');
+
+      expect(room.sendChat(south, 'x' * 201), isNotNull);
+      expect(room.chatLog, hasLength(1));
+
+      room.dispose();
+    });
+
+    test('announcing/revealing a declaration pushes chat entries, without '
+        'leaking its content before reveal', () {
+      final room = PilottaRoom(roomCode: 'OOOO', targetScore: 101, random: Random(1));
+      for (final name in ['A', 'B', 'C', 'D']) {
+        room.join(name);
+      }
+      room.start();
+      final firstToAct = room.auction!.seatToAct;
+      room.handleBid(firstToAct, SuitBidCall(firstToAct, Suit.spades, 80));
+      var next = firstToAct.next;
+      while (room.phase == RoomPhase.bidding) {
+        room.handleBid(next, PassCall(next));
+        next = next.next;
+      }
+
+      // Replace the dealt hand with one where South definitely holds a
+      // declaration (Jack-Ten-Nine of hearts, a 3-card sequence).
+      room.hand = PilottaHand(
+        contract: room.hand!.contract,
+        firstLeader: Seat.south,
+        initialHands: {
+          Seat.south: [
+            const PlayingCard(Suit.hearts, Rank.jack),
+            const PlayingCard(Suit.hearts, Rank.ten),
+            const PlayingCard(Suit.hearts, Rank.nine),
+            const PlayingCard(Suit.clubs, Rank.seven),
+            const PlayingCard(Suit.clubs, Rank.eight),
+            const PlayingCard(Suit.clubs, Rank.nine),
+            const PlayingCard(Suit.clubs, Rank.ten),
+            const PlayingCard(Suit.clubs, Rank.jack),
+          ],
+          Seat.west: [
+            const PlayingCard(Suit.hearts, Rank.seven),
+            const PlayingCard(Suit.hearts, Rank.eight),
+            const PlayingCard(Suit.hearts, Rank.queen),
+            const PlayingCard(Suit.hearts, Rank.king),
+            const PlayingCard(Suit.hearts, Rank.ace),
+            const PlayingCard(Suit.clubs, Rank.queen),
+            const PlayingCard(Suit.clubs, Rank.king),
+            const PlayingCard(Suit.clubs, Rank.ace),
+          ],
+          Seat.north: [
+            const PlayingCard(Suit.spades, Rank.seven),
+            const PlayingCard(Suit.spades, Rank.eight),
+            const PlayingCard(Suit.spades, Rank.nine),
+            const PlayingCard(Suit.spades, Rank.ten),
+            const PlayingCard(Suit.spades, Rank.jack),
+            const PlayingCard(Suit.spades, Rank.queen),
+            const PlayingCard(Suit.spades, Rank.king),
+            const PlayingCard(Suit.spades, Rank.ace),
+          ],
+          Seat.east: [
+            const PlayingCard(Suit.diamonds, Rank.seven),
+            const PlayingCard(Suit.diamonds, Rank.eight),
+            const PlayingCard(Suit.diamonds, Rank.nine),
+            const PlayingCard(Suit.diamonds, Rank.ten),
+            const PlayingCard(Suit.diamonds, Rank.jack),
+            const PlayingCard(Suit.diamonds, Rank.queen),
+            const PlayingCard(Suit.diamonds, Rank.king),
+            const PlayingCard(Suit.diamonds, Rank.ace),
+          ],
+        },
+      );
+
+      expect(room.handleAnnounceDeclaration(Seat.south), isNull);
+      expect(room.chatLog.last.kind, ChatEntryKind.declarationAnnounced);
+      expect(room.chatLog.last.seat, Seat.south);
+      expect(room.chatLog.last.declaration, isNull);
+
+      expect(room.handleRevealDeclaration(Seat.south), isNull);
+      expect(room.chatLog.last.kind, ChatEntryKind.declarationRevealed);
+      expect(room.chatLog.last.declaration, isNotNull);
+
+      room.dispose();
+    });
+  });
 }

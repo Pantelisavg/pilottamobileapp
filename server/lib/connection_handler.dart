@@ -65,6 +65,8 @@ class ConnectionHandler {
         _revealDeclaration();
       case ReadyForNextHandMessage():
         _readyForNextHand();
+      case SendChatMessage():
+        _sendChat(message);
       case LeaveMessage():
         _leave();
     }
@@ -183,6 +185,17 @@ class ConnectionHandler {
     final seat = _seat;
     if (room == null || seat == null) return;
     room.markReadyForNextHand(seat);
+  }
+
+  void _sendChat(SendChatMessage message) {
+    final room = _room;
+    final seat = _seat;
+    if (room == null || seat == null) {
+      _sendError('Δεν είσαι σε δωμάτιο.');
+      return;
+    }
+    final error = room.sendChat(seat, message.text);
+    if (error != null) _sendError(error);
   }
 
   void _leave() {

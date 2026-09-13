@@ -501,6 +501,157 @@ void main() {
       expect(result.declarations.forfeitedPerSeat, isEmpty);
     });
   });
+
+  group('Belote/Pilotta live announcement', () {
+    test('fires pilotta on the first of King+Queen of trump played, and '
+        'repilotta on the second — regardless of the announce/reveal flow', () {
+      final hand = PilottaHand(
+        contract: Contract(
+          biddingSeat: Seat.south,
+          trumpSuit: Suit.spades,
+          value: 80,
+          isCapot: false,
+        ),
+        initialHands: {
+          Seat.south: [
+            const PlayingCard(Suit.spades, Rank.king),
+            const PlayingCard(Suit.spades, Rank.queen),
+            const PlayingCard(Suit.clubs, Rank.seven),
+            const PlayingCard(Suit.clubs, Rank.eight),
+            const PlayingCard(Suit.clubs, Rank.nine),
+            const PlayingCard(Suit.clubs, Rank.ten),
+            const PlayingCard(Suit.clubs, Rank.jack),
+            const PlayingCard(Suit.clubs, Rank.ace),
+          ],
+          // Trump order (high to low) is J, 9, A, 10, K, Q, 8, 7 — so West's
+          // two spades (8, 7) sit BELOW South's King and can't overtake it,
+          // while North's four (J, 9, A, 10) all sit ABOVE it and must.
+          Seat.west: [
+            const PlayingCard(Suit.spades, Rank.eight),
+            const PlayingCard(Suit.spades, Rank.seven),
+            const PlayingCard(Suit.clubs, Rank.king),
+            const PlayingCard(Suit.clubs, Rank.queen),
+            const PlayingCard(Suit.diamonds, Rank.seven),
+            const PlayingCard(Suit.diamonds, Rank.eight),
+            const PlayingCard(Suit.diamonds, Rank.king),
+            const PlayingCard(Suit.diamonds, Rank.ace),
+          ],
+          Seat.north: [
+            const PlayingCard(Suit.spades, Rank.jack),
+            const PlayingCard(Suit.spades, Rank.nine),
+            const PlayingCard(Suit.spades, Rank.ace),
+            const PlayingCard(Suit.spades, Rank.ten),
+            const PlayingCard(Suit.diamonds, Rank.nine),
+            const PlayingCard(Suit.diamonds, Rank.ten),
+            const PlayingCard(Suit.diamonds, Rank.jack),
+            const PlayingCard(Suit.diamonds, Rank.queen),
+          ],
+          Seat.east: [
+            const PlayingCard(Suit.hearts, Rank.seven),
+            const PlayingCard(Suit.hearts, Rank.eight),
+            const PlayingCard(Suit.hearts, Rank.nine),
+            const PlayingCard(Suit.hearts, Rank.ten),
+            const PlayingCard(Suit.hearts, Rank.jack),
+            const PlayingCard(Suit.hearts, Rank.queen),
+            const PlayingCard(Suit.hearts, Rank.king),
+            const PlayingCard(Suit.hearts, Rank.ace),
+          ],
+        },
+        firstLeader: Seat.south,
+      );
+
+      expect(hand.holdsBelote(Seat.south), isTrue);
+      expect(hand.holdsBelote(Seat.west), isFalse);
+      expect(hand.lastBeloteAnnouncement, BeloteAnnouncement.none);
+
+      // Trick 1: south leads King of trump — Pilotta, right away.
+      hand.playCard(Seat.south, const PlayingCard(Suit.spades, Rank.king));
+      expect(hand.lastBeloteAnnouncement, BeloteAnnouncement.pilotta);
+
+      // West's two spades both rank below the King, so neither can beat
+      // it — either is legal; North's all rank above it and must play one
+      // of them, winning the trick and leading trick 2.
+      hand.playCard(Seat.west, const PlayingCard(Suit.spades, Rank.seven));
+      expect(hand.lastBeloteAnnouncement, BeloteAnnouncement.none);
+      hand.playCard(Seat.north, const PlayingCard(Suit.spades, Rank.jack));
+      expect(hand.lastBeloteAnnouncement, BeloteAnnouncement.none);
+      hand.playCard(Seat.east, const PlayingCard(Suit.hearts, Rank.seven));
+      expect(hand.lastBeloteAnnouncement, BeloteAnnouncement.none);
+      expect(hand.currentTrick.winner, Seat.north);
+      hand.startNextTrick();
+
+      // Trick 2: North leads a plain suit south is void in but must trump
+      // for (holding only the Queen of trump left), forcing Repilotta.
+      expect(hand.currentTrick.leader, Seat.north);
+      hand.playCard(Seat.north, const PlayingCard(Suit.diamonds, Rank.nine));
+      hand.playCard(Seat.east, const PlayingCard(Suit.hearts, Rank.eight));
+      expect(hand.legalPlays(Seat.south), [const PlayingCard(Suit.spades, Rank.queen)]);
+      hand.playCard(Seat.south, const PlayingCard(Suit.spades, Rank.queen));
+      expect(hand.lastBeloteAnnouncement, BeloteAnnouncement.repilotta);
+    });
+
+    test('playing the King or Queen of trump without holding both is not a Belote call', () {
+      final hand = PilottaHand(
+        contract: Contract(
+          biddingSeat: Seat.south,
+          trumpSuit: Suit.spades,
+          value: 80,
+          isCapot: false,
+        ),
+        initialHands: {
+          Seat.south: [
+            const PlayingCard(Suit.spades, Rank.king),
+            const PlayingCard(Suit.clubs, Rank.seven),
+            const PlayingCard(Suit.clubs, Rank.eight),
+            const PlayingCard(Suit.clubs, Rank.nine),
+            const PlayingCard(Suit.clubs, Rank.ten),
+            const PlayingCard(Suit.clubs, Rank.jack),
+            const PlayingCard(Suit.clubs, Rank.queen),
+            const PlayingCard(Suit.clubs, Rank.ace),
+          ],
+          Seat.west: [
+            const PlayingCard(Suit.spades, Rank.queen),
+            const PlayingCard(Suit.diamonds, Rank.seven),
+            const PlayingCard(Suit.diamonds, Rank.eight),
+            const PlayingCard(Suit.diamonds, Rank.nine),
+            const PlayingCard(Suit.diamonds, Rank.ten),
+            const PlayingCard(Suit.diamonds, Rank.jack),
+            const PlayingCard(Suit.diamonds, Rank.queen),
+            const PlayingCard(Suit.diamonds, Rank.king),
+          ],
+          Seat.north: [
+            const PlayingCard(Suit.spades, Rank.jack),
+            const PlayingCard(Suit.spades, Rank.ace),
+            const PlayingCard(Suit.spades, Rank.seven),
+            const PlayingCard(Suit.spades, Rank.eight),
+            const PlayingCard(Suit.spades, Rank.nine),
+            const PlayingCard(Suit.spades, Rank.ten),
+            const PlayingCard(Suit.diamonds, Rank.ace),
+            const PlayingCard(Suit.hearts, Rank.seven),
+          ],
+          Seat.east: [
+            const PlayingCard(Suit.hearts, Rank.eight),
+            const PlayingCard(Suit.hearts, Rank.nine),
+            const PlayingCard(Suit.hearts, Rank.ten),
+            const PlayingCard(Suit.hearts, Rank.jack),
+            const PlayingCard(Suit.hearts, Rank.queen),
+            const PlayingCard(Suit.hearts, Rank.king),
+            const PlayingCard(Suit.hearts, Rank.ace),
+            const PlayingCard(Suit.clubs, Rank.king),
+          ],
+        },
+        firstLeader: Seat.south,
+      );
+
+      expect(hand.holdsBelote(Seat.south), isFalse);
+      expect(hand.holdsBelote(Seat.west), isFalse);
+
+      hand.playCard(Seat.south, const PlayingCard(Suit.spades, Rank.king));
+      expect(hand.lastBeloteAnnouncement, BeloteAnnouncement.none);
+      hand.playCard(Seat.west, const PlayingCard(Suit.spades, Rank.queen));
+      expect(hand.lastBeloteAnnouncement, BeloteAnnouncement.none);
+    });
+  });
 }
 
 Random _seededRandom(int seed) => Random(seed);

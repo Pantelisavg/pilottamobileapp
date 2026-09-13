@@ -3,6 +3,7 @@
 /// network peer-to-peer transport.
 library pilotta_protocol;
 
+export 'src/chat.dart';
 export 'src/codec.dart';
 export 'src/messages.dart';
 export 'src/room.dart';

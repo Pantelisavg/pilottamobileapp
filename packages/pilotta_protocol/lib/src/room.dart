@@ -3,8 +3,13 @@ import 'dart:math';
 
 import 'package:pilotta_engine/pilotta_engine.dart';
 
+import 'chat.dart';
 import 'codec.dart';
 import 'messages.dart';
+
+/// How many entries [PilottaRoom._chatLog] keeps before dropping the
+/// oldest — plenty for a single match's worth of table talk.
+const int _kMaxChatLog = 200;
 
 /// The single, transport-agnostic authority for one 4-seat Pilotta match.
 ///
@@ -57,6 +62,15 @@ class PilottaRoom {
 
   Timer? _pendingBotMove;
   Timer? _pendingTrickCollect;
+
+  final List<ChatEntry> _chatLog = [];
+  int _nextChatId = 0;
+
+  /// The room's shared chat/event log, oldest first — read directly by
+  /// same-process viewers (a local hotseat match); networked viewers get
+  /// the same entries via [RoomSnapshotMessage.chatLog].
+  List<ChatEntry> get chatLog => List.unmodifiable(_chatLog);
+
   final List<void Function()> _listeners = [];
   bool _disposed = false;
 
@@ -89,6 +103,30 @@ class PilottaRoom {
     _pendingBotMove?.cancel();
     _pendingTrickCollect?.cancel();
     _listeners.clear();
+  }
+
+  // ------------------------------------------------------------------ chat
+
+  void _pushChat(Seat seat, ChatEntryKind kind, {String? text, Map<String, dynamic>? declaration}) {
+    _chatLog.add(ChatEntry(
+      id: _nextChatId++,
+      seat: seat,
+      kind: kind,
+      text: text,
+      declaration: declaration,
+    ));
+    if (_chatLog.length > _kMaxChatLog) _chatLog.removeAt(0);
+  }
+
+  /// [seat] sends a free-text chat message. Returns an error message if
+  /// rejected (blank, or too long), or null on success.
+  String? sendChat(Seat seat, String text) {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return 'Το μήνυμα είναι κενό.';
+    if (trimmed.length > 200) return 'Το μήνυμα είναι πολύ μεγάλο.';
+    _pushChat(seat, ChatEntryKind.chat, text: trimmed);
+    _notify();
+    return null;
   }
 
   // ---------------------------------------------------------------- lobby
@@ -250,9 +288,12 @@ class PilottaRoom {
       if (!isBotControlled(seat)) continue;
       if (h.canAnnounceDeclaration(seat)) {
         h.announceDeclaration(seat);
+        _pushChat(seat, ChatEntryKind.declarationAnnounced);
       }
       if (h.canRevealDeclaration(seat)) {
         h.revealDeclaration(seat);
+        _pushChat(seat, ChatEntryKind.declarationRevealed,
+            declaration: declarationToJson(h.bestDeclarationOf(seat)!));
       }
     }
   }
@@ -265,6 +306,7 @@ class PilottaRoom {
     if (isBotControlled(seat)) return 'Η θέση ελέγχεται από bot.';
     if (!h.canAnnounceDeclaration(seat)) return 'Δεν μπορείς να δηλώσεις τώρα.';
     h.announceDeclaration(seat);
+    _pushChat(seat, ChatEntryKind.declarationAnnounced);
     _notify();
     return null;
   }
@@ -277,6 +319,8 @@ class PilottaRoom {
     if (isBotControlled(seat)) return 'Η θέση ελέγχεται από bot.';
     if (!h.canRevealDeclaration(seat)) return 'Δεν μπορείς να αποκαλύψεις τώρα.';
     h.revealDeclaration(seat);
+    _pushChat(seat, ChatEntryKind.declarationRevealed,
+        declaration: declarationToJson(h.bestDeclarationOf(seat)!));
     _notify();
     return null;
   }
@@ -301,9 +345,25 @@ class PilottaRoom {
       if (_disposed || hand != h || h.isHandComplete) return;
       final card = _bot.decidePlay(h.currentTrick, h.handOf(toAct), h.contract.trumpSuit);
       h.playCard(toAct, card);
+      _recordBeloteIfAny(toAct, h);
       _notify();
       _afterCardPlayed();
     });
+  }
+
+  /// Right after a [PilottaHand.playCard] call, checks whether that card
+  /// just completed a live Belote/Pilotta call and, if so, pushes it to the
+  /// chat log so every seat sees "Pilotta"/"Repilotta" the instant it
+  /// happens — independent of the announce/reveal declaration flow.
+  void _recordBeloteIfAny(Seat seat, PilottaHand h) {
+    switch (h.lastBeloteAnnouncement) {
+      case BeloteAnnouncement.none:
+        break;
+      case BeloteAnnouncement.pilotta:
+        _pushChat(seat, ChatEntryKind.pilotta);
+      case BeloteAnnouncement.repilotta:
+        _pushChat(seat, ChatEntryKind.repilotta);
+    }
   }
 
   /// Called right after any seat (human or bot) plays a card. If that
@@ -339,6 +399,7 @@ class PilottaRoom {
     if (hand!.currentTrick.seatToPlay != seat) return 'Δεν είναι η σειρά σου.';
     if (!hand!.legalPlays(seat).contains(card)) return 'Μη έγκυρο φύλλο.';
     hand!.playCard(seat, card);
+    _recordBeloteIfAny(seat, hand!);
     _notify();
     _afterCardPlayed();
     return null;
@@ -459,6 +520,7 @@ class PilottaRoom {
       lastHandResult: lastHandResult != null ? handResultToJson(lastHandResult!) : null,
       readyForNextHand: Set.of(readyForNextHand),
       winnerTeam: scoreboard.winner?.name,
+      chatLog: List.unmodifiable(_chatLog),
     );
   }
 }
