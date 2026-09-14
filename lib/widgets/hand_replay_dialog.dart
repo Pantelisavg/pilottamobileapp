@@ -5,6 +5,7 @@ import '../theme/pilotta_colors.dart';
 import 'playing_card_widget.dart';
 import 'seat_layout.dart';
 import 'suit_icon.dart';
+import 'table/auction_rounds_grid.dart';
 import 'table/oval_geometry.dart';
 
 /// Opens a step-through replay of every trick in [result] — one full
@@ -85,6 +86,28 @@ class _HandReplayDialogState extends State<_HandReplayDialog> {
                           fontSize: 13)),
                 ],
               ),
+              if (result.auctionCalls.isNotEmpty)
+                Theme(
+                  data: Theme.of(context)
+                      .copyWith(dividerColor: Colors.transparent),
+                  child: ExpansionTile(
+                    tilePadding: EdgeInsets.zero,
+                    childrenPadding: const EdgeInsets.only(bottom: 8),
+                    iconColor: Colors.white70,
+                    collapsedIconColor: Colors.white70,
+                    title: const Text('Πώς πήγαν οι δηλώσεις',
+                        style: TextStyle(color: Colors.white70, fontSize: 12)),
+                    children: [
+                      SizedBox(
+                        width: 240,
+                        child: AuctionRoundsGrid(
+                          calls: result.auctionCalls,
+                          viewerSeat: widget.viewerSeat,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               const SizedBox(height: 16),
               SizedBox(
                 width: 240,

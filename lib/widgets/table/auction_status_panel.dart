@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../auction_call_label.dart';
 import '../seat_layout.dart';
 import '../suit_icon.dart';
+import 'auction_rounds_grid.dart';
 import 'game_table_data.dart';
 
 /// The live "how's the bidding going" panel shown during the auction —
@@ -68,19 +68,10 @@ class AuctionStatusPanel extends StatelessWidget {
               const SizedBox(height: 10),
               const Divider(height: 1, color: Colors.white24),
               const SizedBox(height: 6),
-              // Capped to the most recent few calls — a plain, unscrolled
-              // list so its height is always small and bounded, whatever
-              // Align/Stack above happens to have room for.
-              for (final call
-                  in auction.calls.reversed.take(5).toList().reversed)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 2),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: auctionCallLabel(
-                        call, seatLabelRelativeTo(call.seat, me)),
-                  ),
-                ),
+              SizedBox(
+                width: 240,
+                child: AuctionRoundsGrid(calls: auction.calls, viewerSeat: me),
+              ),
             ],
           ],
         ),
