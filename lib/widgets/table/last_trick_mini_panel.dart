@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../../settings/app_settings.dart';
 import '../last_trick_dialog.dart';
 import '../playing_card_widget.dart';
 import 'game_table_data.dart';
@@ -18,6 +20,7 @@ class LastTrickMiniPanel extends StatelessWidget {
 
     final winner = controller.lastCompletedTrickWinner;
     final wonByMe = winner != null && winner.team == controller.viewerSeat.team;
+    final deckStyle = context.watch<AppSettings>().deckStyle;
 
     return InkWell(
       borderRadius: BorderRadius.circular(10),
@@ -48,7 +51,8 @@ class LastTrickMiniPanel extends StatelessWidget {
                 for (final entry in played)
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 1),
-                    child: PlayingCardWidget(card: entry.card, width: 20),
+                    child: PlayingCardWidget(
+                        card: entry.card, width: 20, style: deckStyle),
                   ),
               ],
             ),

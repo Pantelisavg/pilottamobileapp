@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:pilotta_engine/pilotta_engine.dart';
 
+import '../settings/card_deck_style.dart';
 import 'suit_icon.dart';
 
-Color suitColor(Suit suit) => suit.isRed ? const Color(0xFFC62828) : const Color(0xFF1B1B1B);
+Color suitColor(Suit suit) =>
+    suit.isRed ? const Color(0xFFC62828) : const Color(0xFF1B1B1B);
 
-/// Renders one playing card, either face up or as a card back.
+/// Renders one playing card, either face up or as a card back, in
+/// whichever [CardDeckStyle] the caller passes — the one rendering seam
+/// every card in the app goes through, so a deck-style choice applies
+/// everywhere uniformly. Defaults to [CardDeckStyle.classic] so existing
+/// call sites that don't care about the setting need no changes.
 class PlayingCardWidget extends StatelessWidget {
   final PlayingCard? card;
   final bool faceUp;
@@ -13,6 +19,7 @@ class PlayingCardWidget extends StatelessWidget {
   final bool dimmed;
   final VoidCallback? onTap;
   final double width;
+  final CardDeckStyle style;
 
   const PlayingCardWidget({
     super.key,
@@ -22,12 +29,15 @@ class PlayingCardWidget extends StatelessWidget {
     this.dimmed = false,
     this.onTap,
     this.width = 56,
+    this.style = CardDeckStyle.classic,
   });
 
   @override
   Widget build(BuildContext context) {
     final height = width * 1.45;
-    final child = faceUp && card != null ? _face(card!) : _back();
+    final child = faceUp && card != null
+        ? (style == CardDeckStyle.modern ? _modernFace(card!) : _face(card!))
+        : (style == CardDeckStyle.modern ? _modernBack() : _back());
 
     return GestureDetector(
       onTap: selectable ? onTap : null,
@@ -36,13 +46,21 @@ class PlayingCardWidget extends StatelessWidget {
         width: width,
         height: height,
         margin: EdgeInsets.only(bottom: selectable ? 0 : 0),
-        transform: selectable ? (Matrix4.identity()..translateByDouble(0, -6, 0, 1)) : Matrix4.identity(),
+        transform: selectable
+            ? (Matrix4.identity()..translateByDouble(0, -6, 0, 1))
+            : Matrix4.identity(),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: style == CardDeckStyle.modern
+              ? const Color(0xFFF7F3E8)
+              : Colors.white,
           borderRadius: BorderRadius.circular(width * 0.12),
           border: Border.all(
-            color: selectable ? const Color(0xFFFFC107) : Colors.black26,
-            width: selectable ? 2.5 : 1,
+            color: selectable
+                ? const Color(0xFFFFC107)
+                : (style == CardDeckStyle.modern
+                    ? const Color(0xFFD9A94E)
+                    : Colors.black26),
+            width: selectable ? 2.5 : (style == CardDeckStyle.modern ? 1.4 : 1),
           ),
           boxShadow: [
             BoxShadow(
@@ -74,7 +92,10 @@ class PlayingCardWidget extends StatelessWidget {
                   children: [
                     Text(c.rank.short,
                         style: TextStyle(
-                            color: color, fontWeight: FontWeight.bold, fontSize: fontSize * 0.62, height: 1)),
+                            color: color,
+                            fontWeight: FontWeight.bold,
+                            fontSize: fontSize * 0.62,
+                            height: 1)),
                     SuitIcon(c.suit, size: fontSize * 0.5, color: color),
                   ],
                 ),
@@ -87,6 +108,86 @@ class PlayingCardWidget extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+
+  /// [CardDeckStyle.modern]'s face: a bordered corner badge mirrored at
+  /// both ends of the card (as on a real card, so it reads right-way-up
+  /// from either side of the table) and a centered suit glyph inside a
+  /// decorative ring, rather than classic's plain stacked corner + glyph.
+  Widget _modernFace(PlayingCard c) {
+    final color = suitColor(c.suit);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final w = constraints.maxWidth;
+        final fontSize = w * 0.3;
+        Widget corner() => Container(
+              padding: EdgeInsets.symmetric(
+                  horizontal: w * 0.05, vertical: w * 0.02),
+              decoration: BoxDecoration(
+                border: Border.all(color: color, width: 1),
+                borderRadius: BorderRadius.circular(w * 0.06),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(c.rank.short,
+                      style: TextStyle(
+                          color: color,
+                          fontWeight: FontWeight.bold,
+                          fontSize: fontSize * 0.5,
+                          height: 1)),
+                  SuitIcon(c.suit, size: fontSize * 0.4, color: color),
+                ],
+              ),
+            );
+
+        return Padding(
+          padding: EdgeInsets.all(w * 0.07),
+          child: Stack(
+            children: [
+              Align(alignment: Alignment.topLeft, child: corner()),
+              Align(
+                alignment: Alignment.bottomRight,
+                child: Transform.rotate(angle: 3.14159, child: corner()),
+              ),
+              Center(
+                child: Container(
+                  padding: EdgeInsets.all(fontSize * 0.18),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                        color: color.withValues(alpha: 0.5), width: 1.2),
+                  ),
+                  child: SuitIcon(c.suit, size: fontSize, color: color),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// [CardDeckStyle.modern]'s back: a navy field with a gold diamond
+  /// lattice, in place of classic's plain green gradient + circle.
+  Widget _modernBack() {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(width * 0.12),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF16213A), Color(0xFF0B1424)],
+        ),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(width * 0.12),
+        child: CustomPaint(
+          size: Size(width, width * 1.45),
+          painter: _ModernBackPainter(),
+        ),
+      ),
     );
   }
 
@@ -112,4 +213,35 @@ class PlayingCardWidget extends StatelessWidget {
       ),
     );
   }
+}
+
+/// A gold diagonal lattice over the navy field of the modern card back —
+/// drawn rather than an image so the deck stays asset-free like the rest
+/// of the app.
+class _ModernBackPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final line = Paint()
+      ..color = const Color(0xFFD9A94E).withValues(alpha: 0.35)
+      ..strokeWidth = 1;
+    const step = 10.0;
+    for (var x = -size.height; x < size.width; x += step) {
+      canvas.drawLine(Offset(x, 0), Offset(x + size.height, size.height), line);
+      canvas.drawLine(Offset(x + size.height, 0), Offset(x, size.height), line);
+    }
+
+    final border = Paint()
+      ..color = const Color(0xFFD9A94E)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+    final inset = size.width * 0.14;
+    canvas.drawRect(
+      Rect.fromLTWH(
+          inset, inset, size.width - inset * 2, size.height - inset * 2),
+      border,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _ModernBackPainter oldDelegate) => false;
 }

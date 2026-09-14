@@ -2,8 +2,11 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pilotta/settings/app_settings.dart';
 import 'package:pilotta/widgets/hand_replay_dialog.dart';
 import 'package:pilotta_engine/pilotta_engine.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 HandResult _playHandToCompletion() {
   final hands = dealHands(Random(5));
@@ -36,22 +39,30 @@ HandResult _playHandToCompletion() {
 }
 
 void main() {
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
+
   testWidgets(
       'shows the last trick first, and Previous/Next step through all 8',
       (tester) async {
     final result = _playHandToCompletion();
+    final settings = await AppSettings.load();
 
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: Builder(
-          builder: (context) => ElevatedButton(
-            onPressed: () => showHandReplayDialog(
-              context,
-              result: result,
-              viewerSeat: Seat.south,
-              handNumber: 3,
+    await tester.pumpWidget(ChangeNotifierProvider<AppSettings>.value(
+      value: settings,
+      child: MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => ElevatedButton(
+              onPressed: () => showHandReplayDialog(
+                context,
+                result: result,
+                viewerSeat: Seat.south,
+                handNumber: 3,
+              ),
+              child: const Text('open'),
             ),
-            child: const Text('open'),
           ),
         ),
       ),

@@ -3,6 +3,7 @@ import 'package:pilotta_engine/pilotta_engine.dart';
 import 'package:provider/provider.dart';
 
 import '../settings/app_settings.dart';
+import '../settings/card_deck_style.dart';
 import '../theme/pilotta_colors.dart';
 import '../theme/pilotta_spacing.dart';
 import '../theme/pilotta_typography.dart';
@@ -100,9 +101,25 @@ class SettingsScreen extends StatelessWidget {
                             child: PlayingCardWidget(
                               card: const PlayingCard(Suit.spades, Rank.ace),
                               width: 64 * settings.cardScale,
+                              style: settings.deckStyle,
                             ),
                           ),
                           const SizedBox(height: PilottaSpacing.xs),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: PilottaSpacing.lg),
+                    _SectionLabel('Τράπουλα'),
+                    FeltPanel(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          for (final style in CardDeckStyle.values)
+                            _DeckStyleOption(
+                              style: style,
+                              selected: settings.deckStyle == style,
+                              onTap: () => settings.setDeckStyle(style),
+                            ),
                         ],
                       ),
                     ),
@@ -152,6 +169,57 @@ class SettingsScreen extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DeckStyleOption extends StatelessWidget {
+  final CardDeckStyle style;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _DeckStyleOption({
+    required this.style,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(PilottaSpacing.sm),
+      child: Padding(
+        padding: const EdgeInsets.all(PilottaSpacing.xs),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(PilottaSpacing.sm),
+                border: Border.all(
+                  color: selected ? PilottaColors.gold500 : Colors.transparent,
+                  width: 2,
+                ),
+              ),
+              child: PlayingCardWidget(
+                card: const PlayingCard(Suit.hearts, Rank.king),
+                width: 56,
+                style: style,
+              ),
+            ),
+            const SizedBox(height: PilottaSpacing.xs),
+            Text(style.displayName,
+                style: TextStyle(
+                  color:
+                      selected ? PilottaColors.gold500 : PilottaColors.ink200,
+                  fontSize: 12,
+                  fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+                )),
+          ],
         ),
       ),
     );

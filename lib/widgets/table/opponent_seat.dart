@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:pilotta_engine/pilotta_engine.dart';
+import 'package:provider/provider.dart';
 
+import '../../settings/app_settings.dart';
 import '../player_avatar.dart';
 import '../playing_card_widget.dart';
 import '../seat_layout.dart';
@@ -35,6 +37,7 @@ class OpponentSeat extends StatelessWidget {
     final isPartner = seat == controller.viewerSeat.partner;
     final declState = controller.declarationStateOf(seat);
     final revealedLabel = controller.revealedDeclarationsLabelOf(seat);
+    final deckStyle = context.watch<AppSettings>().deckStyle;
 
     return Padding(
       padding: const EdgeInsets.all(8),
@@ -80,7 +83,8 @@ class OpponentSeat extends StatelessWidget {
                   for (var i = 0; i < cardCount; i++)
                     Positioned(
                       left: i * 9.0,
-                      child: const PlayingCardWidget(faceUp: false, width: 30),
+                      child: PlayingCardWidget(
+                          faceUp: false, width: 30, style: deckStyle),
                     ),
                 ],
               ),

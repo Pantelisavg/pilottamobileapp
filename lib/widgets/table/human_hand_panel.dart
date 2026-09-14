@@ -59,6 +59,7 @@ class HumanHandPanel extends StatelessWidget {
                 legal: legal,
                 isMyTurn: isMyTurn,
                 cardScale: cardScale,
+                deckStyle: settings.deckStyle,
                 reasonFor: (card) => trick != null
                     ? illegalPlayReason(trick, cards, card)
                     : null,

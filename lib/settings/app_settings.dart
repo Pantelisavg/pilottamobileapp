@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'card_deck_style.dart';
+
 /// App-wide, persisted preferences: the configurable house rule, sound,
 /// and card size. Loaded once at startup and provided down the widget tree
 /// so any screen can read or change it.
@@ -10,6 +12,7 @@ class AppSettings extends ChangeNotifier {
   static const _kCardScale = 'cardScale';
   static const _kHandAscending = 'handAscending';
   static const _kPlayerName = 'playerName';
+  static const _kDeckStyle = 'deckStyle';
 
   static const double minCardScale = 0.8;
   static const double maxCardScale = 1.3;
@@ -22,6 +25,7 @@ class AppSettings extends ChangeNotifier {
   double _cardScale;
   bool _handAscending;
   String _playerName;
+  CardDeckStyle _deckStyle;
 
   AppSettings._(
     this._prefs, {
@@ -30,11 +34,13 @@ class AppSettings extends ChangeNotifier {
     required double cardScale,
     required bool handAscending,
     required String playerName,
+    required CardDeckStyle deckStyle,
   })  : _mustOvertrumpAllSuits = mustOvertrumpAllSuits,
         _soundEnabled = soundEnabled,
         _cardScale = cardScale,
         _handAscending = handAscending,
-        _playerName = playerName;
+        _playerName = playerName,
+        _deckStyle = deckStyle;
 
   static Future<AppSettings> load() async {
     final prefs = await SharedPreferences.getInstance();
@@ -45,6 +51,10 @@ class AppSettings extends ChangeNotifier {
       cardScale: prefs.getDouble(_kCardScale) ?? 1.0,
       handAscending: prefs.getBool(_kHandAscending) ?? false,
       playerName: prefs.getString(_kPlayerName) ?? defaultPlayerName,
+      deckStyle: CardDeckStyle.values.firstWhere(
+        (s) => s.name == prefs.getString(_kDeckStyle),
+        orElse: () => CardDeckStyle.classic,
+      ),
     );
   }
 
@@ -60,6 +70,10 @@ class AppSettings extends ChangeNotifier {
   /// The name shown for the human seat in local play, and the default
   /// pre-filled when joining an online/Bluetooth room.
   String get playerName => _playerName;
+
+  /// Which of the fully original CustomPainter-drawn card looks
+  /// [PlayingCardWidget] renders with — applies everywhere a card is shown.
+  CardDeckStyle get deckStyle => _deckStyle;
 
   Future<void> setMustOvertrumpAllSuits(bool value) async {
     if (value == _mustOvertrumpAllSuits) return;
@@ -97,5 +111,12 @@ class AppSettings extends ChangeNotifier {
     _playerName = effective;
     notifyListeners();
     await _prefs.setString(_kPlayerName, effective);
+  }
+
+  Future<void> setDeckStyle(CardDeckStyle value) async {
+    if (value == _deckStyle) return;
+    _deckStyle = value;
+    notifyListeners();
+    await _prefs.setString(_kDeckStyle, value.name);
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:pilotta_engine/pilotta_engine.dart';
 
+import '../settings/card_deck_style.dart';
 import 'hand_card.dart';
 
 /// A player's hand, laid out as an overlapping fan that always fits the
@@ -14,6 +15,7 @@ class FannedHand extends StatelessWidget {
   final String? Function(PlayingCard card)? reasonFor;
   final void Function(PlayingCard card) onTap;
   final double cardScale;
+  final CardDeckStyle deckStyle;
 
   const FannedHand({
     super.key,
@@ -23,6 +25,7 @@ class FannedHand extends StatelessWidget {
     this.reasonFor,
     required this.onTap,
     this.cardScale = 1.0,
+    this.deckStyle = CardDeckStyle.classic,
   });
 
   static const double _baseWidth = 66;
@@ -49,7 +52,8 @@ class FannedHand extends StatelessWidget {
             spacing = comfortable;
           } else {
             spacing = (maxWidth - cardWidth) / (n - 1);
-            spacing = spacing.clamp(cardWidth * _minOverlapFraction, comfortable);
+            spacing =
+                spacing.clamp(cardWidth * _minOverlapFraction, comfortable);
           }
         }
         final totalWidth = n == 0 ? 0.0 : spacing * (n - 1) + cardWidth;
@@ -72,6 +76,7 @@ class FannedHand extends StatelessWidget {
                         : null,
                     onTap: () => onTap(cards[i]),
                     width: cardWidth,
+                    style: deckStyle,
                   ),
                 ),
             ],

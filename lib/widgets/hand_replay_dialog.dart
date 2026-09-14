@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:pilotta_engine/pilotta_engine.dart';
+import 'package:provider/provider.dart';
 
+import '../settings/app_settings.dart';
 import '../theme/pilotta_colors.dart';
 import 'playing_card_widget.dart';
 import 'seat_layout.dart';
@@ -52,6 +54,7 @@ class _HandReplayDialogState extends State<_HandReplayDialog> {
     final result = widget.result;
     final trick = result.tricks[_trickIndex];
     final contract = result.contract;
+    final deckStyle = context.watch<AppSettings>().deckStyle;
 
     return Dialog(
       backgroundColor: PilottaColors.felt800,
@@ -127,7 +130,8 @@ class _HandReplayDialogState extends State<_HandReplayDialog> {
                                 style: const TextStyle(
                                     color: Colors.white54, fontSize: 10)),
                             const SizedBox(height: 2),
-                            PlayingCardWidget(card: entry.card, width: 52),
+                            PlayingCardWidget(
+                                card: entry.card, width: 52, style: deckStyle),
                             if (entry.seat == trick.winner)
                               const Padding(
                                 padding: EdgeInsets.only(top: 4),

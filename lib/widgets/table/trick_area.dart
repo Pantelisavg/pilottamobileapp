@@ -21,7 +21,8 @@ class TrickArea extends StatelessWidget {
     if (trick == null) return const SizedBox.shrink();
 
     final played = {for (final e in trick.played) e.seat: e.card};
-    final cardScale = context.watch<AppSettings>().cardScale;
+    final settings = context.watch<AppSettings>();
+    final cardScale = settings.cardScale;
 
     return SizedBox(
       width: 260,
@@ -33,7 +34,9 @@ class TrickArea extends StatelessWidget {
               Align(
                 alignment: ovalSeatAlignment(seat, controller.viewerSeat),
                 child: PlayingCardWidget(
-                    card: played[seat], width: 68 * cardScale),
+                    card: played[seat],
+                    width: 68 * cardScale,
+                    style: settings.deckStyle),
               ),
         ],
       ),

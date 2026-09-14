@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:pilotta_protocol/pilotta_protocol.dart';
+import 'package:provider/provider.dart';
 
+import '../settings/app_settings.dart';
 import 'playing_card_widget.dart';
 
 /// The actual cards behind one or more revealed declarations, as small
@@ -18,6 +20,7 @@ class DeclarationCardsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final deckStyle = context.watch<AppSettings>().deckStyle;
     return Wrap(
       spacing: 12,
       runSpacing: 6,
@@ -31,7 +34,9 @@ class DeclarationCardsRow extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.only(right: 4),
                   child: PlayingCardWidget(
-                      card: cardFromJson(cardJson), width: cardWidth),
+                      card: cardFromJson(cardJson),
+                      width: cardWidth,
+                      style: deckStyle),
                 ),
             ],
           ),
