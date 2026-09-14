@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:pilotta_engine/pilotta_engine.dart';
 
+import '../theme/pilotta_colors.dart';
 import 'auction_call_label.dart';
 
 /// Shows the full auction sequence for the hand currently in play — every
@@ -17,7 +18,7 @@ void showAuctionHistoryDialog(
   showDialog<void>(
     context: context,
     builder: (context) => Dialog(
-      backgroundColor: const Color(0xFF0E3428),
+      backgroundColor: PilottaColors.felt800,
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:pilotta_engine/pilotta_engine.dart';
 
+import '../theme/pilotta_colors.dart';
 import 'seat_layout.dart';
 import 'suit_icon.dart';
 
@@ -102,7 +103,7 @@ void showScoreboardSheet(
 }) {
   showModalBottomSheet<void>(
     context: context,
-    backgroundColor: const Color(0xFF0E3428),
+    backgroundColor: PilottaColors.felt800,
     isScrollControlled: true,
     builder: (context) => DraggableScrollableSheet(
       initialChildSize: 0.6,
