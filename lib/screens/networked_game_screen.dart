@@ -7,23 +7,16 @@ import '../controllers/online_game_controller.dart';
 import '../controllers/room_client_controller.dart';
 import '../settings/app_settings.dart';
 import '../settings/sound.dart';
-import '../widgets/auction_call_label.dart';
-import '../widgets/auction_history_dialog.dart';
 import '../widgets/bidding_panel.dart';
 import '../widgets/chat_flash_banner.dart';
 import '../widgets/chat_panel.dart';
-import '../widgets/declaration_label.dart';
-import '../widgets/fanned_hand.dart';
-import '../widgets/hand_replay_dialog.dart';
-import '../widgets/hand_sort.dart';
-import '../widgets/illegal_reason.dart';
-import '../widgets/last_trick_dialog.dart';
-import '../widgets/player_avatar.dart';
-import '../widgets/playing_card_widget.dart';
-import '../widgets/scoreboard_sheet.dart';
-import '../widgets/seat_layout.dart';
-import '../widgets/table/oval_geometry.dart';
-import '../widgets/suit_icon.dart';
+import '../widgets/table/declaration_panel.dart';
+import '../widgets/table/hand_summary_overlay.dart';
+import '../widgets/table/human_hand_panel.dart';
+import '../widgets/table/match_over_overlay.dart';
+import '../widgets/table/opponent_seat.dart';
+import '../widgets/table/oval_table_area.dart';
+import '../widgets/table/score_header.dart';
 import '../widgets/turn_timer_ring.dart';
 
 class NetworkedGameScreen extends StatelessWidget {
@@ -193,7 +186,10 @@ class _OnlineTable extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: const Color(0xFF082A20),
         foregroundColor: Colors.white,
-        title: _OnlineScoreHeader(controller: controller),
+        title: ScoreHeader(
+          controller: controller,
+          extraTargetSubtitle: 'Δωμάτιο ${snapshot.roomCode}',
+        ),
         titleSpacing: 12,
         actions: [
           IconButton(
@@ -225,13 +221,37 @@ class _OnlineTable extends StatelessWidget {
                         style:
                             const TextStyle(color: Colors.white, fontSize: 12)),
                   ),
-                Expanded(child: _OnlineTableArea(controller: controller)),
-                if (snapshot.canAnnounceDeclaration ||
-                    snapshot.canRevealDeclaration)
-                  _OnlineDeclarationPanel(controller: controller),
+                Expanded(
+                  child: OvalTableArea(
+                    controller: controller,
+                    opponentSeatBuilder: (seat) {
+                      final info = snapshot.seats[seat]!;
+                      final isActive = controller.seatToAct == seat;
+                      return OpponentSeat(
+                        controller: controller,
+                        seat: seat,
+                        disconnected: !info.isBot && !info.connected,
+                        // A purely cosmetic pace cue — nothing auto-plays if
+                        // it runs out, there is no server-side turn timeout.
+                        timerOverlay: isActive && !info.isBot && info.connected
+                            ? TurnTimerRing(
+                                key: ValueKey(
+                                    '${snapshot.phase.name}|${snapshot.seatToAct?.name}'),
+                                active: true,
+                                size: 66,
+                              )
+                            : null,
+                      );
+                    },
+                  ),
+                ),
+                if (controller.canAnnounceDeclaration ||
+                    controller.canRevealDeclaration)
+                  DeclarationPanel(controller: controller),
                 // The hand stays visible above the bidding panel — you
                 // need to see your cards while you decide what to call.
-                _OnlineHumanHand(controller: controller),
+                HumanHandPanel(
+                    controller: controller, errorText: controller.lastError),
                 if (controller.isMyTurnToBid)
                   BiddingPanel(
                     auction: controller.auction!,
@@ -244,579 +264,14 @@ class _OnlineTable extends StatelessWidget {
               ],
             ),
             if (snapshot.phase == RoomPhase.handSummary)
-              _OnlineHandSummaryOverlay(controller: controller),
+              HandSummaryOverlay(controller: controller),
             if (snapshot.phase == RoomPhase.matchOver)
-              _OnlineMatchOverOverlay(controller: controller),
+              MatchOverOverlay(controller: controller),
             if (controller.status == ConnectionStatus.disconnected)
               _DisconnectOverlay(controller: controller),
             ChatFlashBanner(chatLog: controller.chatLog, viewerSeat: me),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _OnlineScoreHeader extends StatelessWidget {
-  final RoomClientController controller;
-  const _OnlineScoreHeader({required this.controller});
-
-  @override
-  Widget build(BuildContext context) {
-    final snapshot = controller.snapshot!;
-    final myTeamKey =
-        controller.mySeat!.team == Team.northSouth ? 'northSouth' : 'eastWest';
-    final theirTeamKey = myTeamKey == 'northSouth' ? 'eastWest' : 'northSouth';
-    final contract = snapshot.contract;
-
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        InkWell(
-          onTap: () => showScoreboardSheet(
-            context,
-            rows: buildScoreRows(controller.matchHistory, controller.mySeat!),
-            totalMine: snapshot.totals[myTeamKey]!,
-            totalTheirs: snapshot.totals[theirTeamKey]!,
-            targetScore: snapshot.targetScore,
-            onRowTap: (i) => showHandReplayDialog(
-              context,
-              result: controller.matchHistory[i],
-              viewerSeat: controller.mySeat!,
-              handNumber: i + 1,
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'Εμείς ${snapshot.totals[myTeamKey]}  –  Αυτοί ${snapshot.totals[theirTeamKey]}',
-                    style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(width: 4),
-                  const Icon(Icons.receipt_long,
-                      color: Colors.white54, size: 16),
-                ],
-              ),
-              Text(
-                  'Στόχος: ${snapshot.targetScore} · Δωμάτιο ${snapshot.roomCode}',
-                  style: const TextStyle(fontSize: 11, color: Colors.white70)),
-            ],
-          ),
-        ),
-        if (contract != null)
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                contract['isCapot'] == true ? 'Καπό' : '${contract['value']}',
-                style:
-                    const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(width: 4),
-              SuitIcon(Suit.values.byName(contract['trumpSuit'] as String),
-                  size: 22, color: Colors.white),
-            ],
-          ),
-      ],
-    );
-  }
-}
-
-class _OnlineTableArea extends StatelessWidget {
-  final RoomClientController controller;
-  const _OnlineTableArea({required this.controller});
-
-  @override
-  Widget build(BuildContext context) {
-    final snapshot = controller.snapshot!;
-    final me = controller.mySeat!;
-
-    return Stack(
-      children: [
-        for (final seat in Seat.values)
-          if (seat != me)
-            Align(
-              alignment: ovalSeatAlignment(seat, me),
-              child: _OnlineOpponentSeat(controller: controller, seat: seat),
-            ),
-        Center(child: _OnlineTrickArea(controller: controller)),
-        if (snapshot.phase == RoomPhase.bidding)
-          const Align(
-              alignment: Alignment.center, child: _OnlineAuctionStatus()),
-        if (snapshot.phase == RoomPhase.playing &&
-            snapshot.lastCompletedTrick != null)
-          Positioned(
-            top: 0,
-            left: 0,
-            child: IconButton(
-              tooltip: 'Προηγούμενη μπάζα',
-              icon: const Icon(Icons.history, color: Colors.white70),
-              onPressed: () {
-                final played = snapshot.lastCompletedTrick!
-                    .map((e) => (
-                          seat: Seat.values.byName(e['seat'] as String),
-                          card: cardFromJson(e['card'] as Map<String, dynamic>),
-                        ))
-                    .toList();
-                showLastTrickDialog(
-                  context,
-                  played: played,
-                  winner: snapshot.lastCompletedTrickWinner,
-                  viewerSeat: me,
-                );
-              },
-            ),
-          ),
-        if (snapshot.phase == RoomPhase.playing &&
-            (controller.auction?.calls.isNotEmpty ?? false))
-          Positioned(
-            top: 0,
-            right: 0,
-            child: IconButton(
-              tooltip: 'Πώς πήγαν οι δηλώσεις',
-              icon: const Icon(Icons.gavel, color: Colors.white70),
-              onPressed: () => showAuctionHistoryDialog(
-                context,
-                calls: controller.auction!.calls,
-                viewerSeat: me,
-                seatLabel: (seat) => seatLabelRelativeTo(seat, me),
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-class _OnlineOpponentSeat extends StatelessWidget {
-  final RoomClientController controller;
-  final Seat seat;
-  const _OnlineOpponentSeat({required this.controller, required this.seat});
-
-  @override
-  Widget build(BuildContext context) {
-    final snapshot = controller.snapshot!;
-    final isActive = snapshot.seatToAct == seat;
-    final cardCount = snapshot.handSizes[seat] ?? 0;
-    final isPartner = seat == controller.mySeat!.partner;
-    final info = snapshot.seats[seat]!;
-    final declState = snapshot.declarationStates[seat];
-
-    return Padding(
-      padding: const EdgeInsets.all(8),
-      // The table area's height isn't divided into a fixed slot per seat —
-      // an opponent's avatar+cards column can outgrow whatever's actually
-      // left over once the bidding panel (or other overlays) claim their
-      // share, especially on a small screen. Shrink to fit rather than
-      // overflow, instead of trying to fix its natural size.
-      child: FittedBox(
-        fit: BoxFit.scaleDown,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            PlayerAvatar(
-              label: seatLabelRelativeTo(seat, controller.mySeat!),
-              cardCount: cardCount,
-              isActive: isActive,
-              isPartner: isPartner,
-              isBot: info.isBot,
-              disconnected: !info.isBot && !info.connected,
-              // A purely cosmetic pace cue — nothing auto-plays if it runs
-              // out, there is no server-side turn timeout.
-              timerOverlay: isActive && !info.isBot && info.connected
-                  ? TurnTimerRing(
-                      key: ValueKey(
-                          '${snapshot.phase.name}|${snapshot.seatToAct?.name}'),
-                      active: true,
-                      size: 66,
-                    )
-                  : null,
-            ),
-            if (declState == DeclarationAnnounceState.announced.name)
-              const Padding(
-                padding: EdgeInsets.only(top: 2),
-                child: Text('Δήλωσε — αναμένεται αποκάλυψη',
-                    style: TextStyle(color: Colors.amberAccent, fontSize: 9)),
-              )
-            else if (declState == DeclarationAnnounceState.revealed.name)
-              Padding(
-                padding: const EdgeInsets.only(top: 2),
-                child: Text(
-                    declarationsPointsLabelFromJsonList(
-                        snapshot.revealedDeclarations[seat]!),
-                    style: const TextStyle(
-                        color: Colors.lightGreenAccent, fontSize: 9)),
-              ),
-            const SizedBox(height: 4),
-            SizedBox(
-              height: 46,
-              width: 92,
-              child: Stack(
-                children: [
-                  for (var i = 0; i < cardCount; i++)
-                    Positioned(
-                      left: i * 9.0,
-                      child: const PlayingCardWidget(faceUp: false, width: 30),
-                    ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _OnlineTrickArea extends StatelessWidget {
-  final RoomClientController controller;
-  const _OnlineTrickArea({required this.controller});
-
-  @override
-  Widget build(BuildContext context) {
-    final snapshot = controller.snapshot!;
-    final trick = snapshot.currentTrick;
-    if (trick == null) return const SizedBox.shrink();
-
-    final cardScale = context.watch<AppSettings>().cardScale;
-    return SizedBox(
-      width: 260,
-      height: 240,
-      child: Stack(
-        children: [
-          for (final entry in trick)
-            Align(
-              alignment: ovalSeatAlignment(
-                  Seat.values.byName(entry['seat'] as String),
-                  controller.mySeat!),
-              child: PlayingCardWidget(
-                card: cardFromJson(entry['card'] as Map<String, dynamic>),
-                width: 68 * cardScale,
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _OnlineAuctionStatus extends StatelessWidget {
-  const _OnlineAuctionStatus();
-
-  @override
-  Widget build(BuildContext context) {
-    return Consumer<RoomClientController>(
-      builder: (context, controller, _) {
-        final auction = controller.auction;
-        if (auction == null) return const SizedBox.shrink();
-        final bid = auction.currentBid;
-        final me = controller.mySeat!;
-
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-              color: Colors.black54, borderRadius: BorderRadius.circular(16)),
-          // SingleChildScrollView clamps to whatever height the Align/Stack
-          // above actually has available and scrolls instead of
-          // overflowing on a short screen.
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text('Δηλώσεις',
-                    style: TextStyle(color: Colors.white70, fontSize: 12)),
-                const SizedBox(height: 6),
-                if (bid == null)
-                  const Text('Καμία δήλωση ακόμα',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold))
-                else
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text('${bid.isCapot ? 'Καπό' : bid.value} ',
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold)),
-                      SuitIcon(bid.suit, size: 18, color: Colors.white),
-                      Text(' — ${seatLabelRelativeTo(bid.seat, me)}',
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold)),
-                    ],
-                  ),
-                const SizedBox(height: 6),
-                Text('Σειρά: ${seatLabelRelativeTo(auction.seatToAct, me)}',
-                    style: const TextStyle(
-                        color: Colors.amberAccent, fontSize: 12)),
-                if (auction.calls.isNotEmpty) ...[
-                  const SizedBox(height: 10),
-                  const Divider(height: 1, color: Colors.white24),
-                  const SizedBox(height: 6),
-                  // Capped to the most recent few calls — a plain,
-                  // unscrolled list so its height is always small and
-                  // bounded, whatever Align/Stack above has room for.
-                  for (final call
-                      in auction.calls.reversed.take(5).toList().reversed)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 2),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: auctionCallLabel(
-                            call, seatLabelRelativeTo(call.seat, me)),
-                      ),
-                    ),
-                ],
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _OnlineDeclarationPanel extends StatelessWidget {
-  final RoomClientController controller;
-  const _OnlineDeclarationPanel({required this.controller});
-
-  @override
-  Widget build(BuildContext context) {
-    final snapshot = controller.snapshot!;
-    final declaration = snapshot.yourBestDeclaration;
-    if (declaration == null) return const SizedBox.shrink();
-
-    final canAnnounce = snapshot.canAnnounceDeclaration;
-    return Container(
-      width: double.infinity,
-      color: Colors.indigo.shade900,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              canAnnounce
-                  ? 'Έχεις ${declaration['pointValue']} — δήλωσέ το τώρα!'
-                  : 'Αποκάλυψε τη δήλωσή σου πριν παίξεις, αλλιώς χάνεται!',
-              style: const TextStyle(color: Colors.white, fontSize: 12),
-            ),
-          ),
-          const SizedBox(width: 8),
-          FilledButton(
-            // Overrides the theme's full-width (Size.fromHeight) minimumSize,
-            // which forces an infinite width crash for a button placed next
-            // to something else in a Row instead of alone in a Column.
-            style: FilledButton.styleFrom(minimumSize: const Size(64, 40)),
-            onPressed: canAnnounce
-                ? controller.announceDeclaration
-                : controller.revealDeclaration,
-            child: Text(canAnnounce ? 'Δήλωσε' : 'Αποκάλυψε'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _OnlineHumanHand extends StatelessWidget {
-  final RoomClientController controller;
-  const _OnlineHumanHand({required this.controller});
-
-  @override
-  Widget build(BuildContext context) {
-    final snapshot = controller.snapshot!;
-    final cards = snapshot.yourHand;
-    final isMyTurn = controller.isMyTurnToPlay;
-    // Legality is computed client-side from the trick's public state (see
-    // RoomClientController.legalPlaysForMe) — it never depends on other
-    // players' hidden cards, so this exactly matches what the server will
-    // accept. The server still validates independently; any rejection
-    // (should be rare) comes back as an error banner.
-    final legal = controller.legalPlaysForMe.toSet();
-    final trick = controller.currentTrick;
-    final settings = context.watch<AppSettings>();
-    final cardScale = settings.cardScale;
-    final sorted = sortedForHand(cards, ascending: settings.handAscending);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-      color: const Color(0xFF082A20),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (controller.lastError != null)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 6),
-              child: Text(controller.lastError!,
-                  style:
-                      const TextStyle(color: Colors.redAccent, fontSize: 12)),
-            ),
-          FannedHand(
-            cards: sorted,
-            legal: legal,
-            isMyTurn: isMyTurn,
-            cardScale: cardScale,
-            reasonFor: (card) =>
-                trick != null ? illegalPlayReason(trick, cards, card) : null,
-            onTap: (card) {
-              playTapSound(context.read<AppSettings>());
-              controller.playCard(card);
-            },
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _OnlineHandSummaryOverlay extends StatelessWidget {
-  final RoomClientController controller;
-  const _OnlineHandSummaryOverlay({required this.controller});
-
-  @override
-  Widget build(BuildContext context) {
-    final result = controller.snapshot!.lastHandResult!;
-    final myTeamKey =
-        controller.mySeat!.team == Team.northSouth ? 'northSouth' : 'eastWest';
-    final theirTeamKey = myTeamKey == 'northSouth' ? 'eastWest' : 'northSouth';
-    final contract = result['contract'] as Map<String, dynamic>;
-    final trickPoints = (result['trickPoints'] as Map<String, dynamic>);
-    final rawTotals = (result['rawTotals'] as Map<String, dynamic>);
-    final rounded = (result['rounded'] as Map<String, dynamic>);
-    final declarations = result['declarations'] as Map<String, dynamic>;
-    final contractMade = result['contractMade'] as bool;
-    final iAmReady =
-        controller.snapshot!.readyForNextHand.contains(controller.mySeat);
-
-    return Container(
-      color: Colors.black54,
-      alignment: Alignment.center,
-      child: Card(
-        margin: const EdgeInsets.all(24),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                contractMade ? 'Το συμβόλαιο βγήκε' : 'Μέσα!',
-                style:
-                    const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 4),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                      '${contract['isCapot'] == true ? 'Καπό' : contract['value']} ',
-                      style: const TextStyle(fontSize: 14)),
-                  SuitIcon(Suit.values.byName(contract['trumpSuit'] as String),
-                      size: 16),
-                ],
-              ),
-              const Divider(height: 24),
-              _row('Πόντοι φύλλων',
-                  '${trickPoints[myTeamKey]} – ${trickPoints[theirTeamKey]}'),
-              if (declarations['winningTeam'] != null)
-                _row(
-                  'Δηλώσεις',
-                  declarations['winningTeam'] == myTeamKey
-                      ? '${declarations['winningTeamPoints']} – 0'
-                      : '0 – ${declarations['winningTeamPoints']}',
-                ),
-              for (final entry
-                  in (declarations['forfeitedPerSeat'] as Map<String, dynamic>)
-                      .entries)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 2),
-                  child: Text(
-                    '${seatLabelRelativeTo(Seat.values.byName(entry.key), controller.mySeat!)} '
-                    'ξέχασε να αποκαλύψει: '
-                    '${declarationPointsLabelFromJson(entry.value as Map<String, dynamic>)} (χαμένο)',
-                    style:
-                        const TextStyle(fontSize: 11, color: Colors.redAccent),
-                  ),
-                ),
-              _row('Σύνολο',
-                  '${rawTotals[myTeamKey]} – ${rawTotals[theirTeamKey]}'),
-              const Divider(height: 24),
-              _row(
-                'Βαθμολογία γύρου',
-                '${rounded[myTeamKey == 'northSouth' ? 'northSouth' : 'eastWest']}'
-                    ' – '
-                    '${rounded[theirTeamKey == 'northSouth' ? 'northSouth' : 'eastWest']}',
-                bold: true,
-              ),
-              const SizedBox(height: 16),
-              FilledButton(
-                onPressed: iAmReady ? null : controller.continueAfterHand,
-                child: Text(iAmReady
-                    ? 'Περιμένουμε τους άλλους...'
-                    : 'Επόμενη μοιρασιά'),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _row(String label, String value, {bool bold = false}) {
-    final style =
-        TextStyle(fontWeight: bold ? FontWeight.bold : FontWeight.normal);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [Text(label, style: style), Text(value, style: style)],
-      ),
-    );
-  }
-}
-
-class _OnlineMatchOverOverlay extends StatelessWidget {
-  final RoomClientController controller;
-  const _OnlineMatchOverOverlay({required this.controller});
-
-  @override
-  Widget build(BuildContext context) {
-    final snapshot = controller.snapshot!;
-    final myTeamKey =
-        controller.mySeat!.team == Team.northSouth ? 'northSouth' : 'eastWest';
-    final theirTeamKey = myTeamKey == 'northSouth' ? 'eastWest' : 'northSouth';
-    final weWon = snapshot.winnerTeam == myTeamKey;
-
-    return Container(
-      color: Colors.black87,
-      alignment: Alignment.center,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(weWon ? 'Κερδίσατε!' : 'Χάσατε',
-              style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 30,
-                  fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          Text(
-              '${snapshot.totals[myTeamKey]} – ${snapshot.totals[theirTeamKey]}',
-              style: const TextStyle(color: Colors.white70, fontSize: 20)),
-          const SizedBox(height: 24),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Πίσω στο μενού'),
-          ),
-        ],
       ),
     );
   }

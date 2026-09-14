@@ -23,6 +23,11 @@ abstract interface class GameTableData implements Listenable {
   bool get isViewerTurnToBid;
   void submitBid(AuctionCall call);
 
+  /// Whoever's turn it is right now, during bidding or play — null once a
+  /// trick is complete and awaiting collection, or outside those phases.
+  /// Used to highlight the active seat regardless of which phase it is.
+  Seat? get seatToAct;
+
   // --------------------------------------------------------------- playing
   Contract? get contract;
   Trick? get currentTrick;
@@ -71,4 +76,10 @@ abstract interface class GameTableData implements Listenable {
   /// Acknowledges the hand summary, dealing the next hand (or ending the
   /// match if the target score has been reached).
   void continueAfterHand();
+
+  /// Whether the viewer has already acknowledged the current hand summary
+  /// (via [continueAfterHand]) and is waiting on the other seats — always
+  /// false in local play, where every bot auto-readies instantly so this
+  /// state is never actually observable.
+  bool get viewerIsReadyForNextHand;
 }

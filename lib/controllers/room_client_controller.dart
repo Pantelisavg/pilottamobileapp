@@ -93,6 +93,10 @@ abstract class RoomClientController extends ChangeNotifier
   @override
   void continueAfterHand() => sendMessage(const ReadyForNextHandMessage());
 
+  @override
+  bool get viewerIsReadyForNextHand =>
+      snapshot?.readyForNextHand.contains(mySeat) ?? false;
+
   /// Sends a free-text chat message, visible to every seat.
   @override
   void sendChat(String text) => sendMessage(SendChatMessage(text));
@@ -187,6 +191,9 @@ abstract class RoomClientController extends ChangeNotifier
 
   @override
   bool get isViewerTurnToBid => isMyTurnToBid;
+
+  @override
+  Seat? get seatToAct => snapshot?.seatToAct;
 
   @override
   Contract? get contract {

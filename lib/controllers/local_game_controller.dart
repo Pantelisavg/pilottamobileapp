@@ -148,6 +148,10 @@ class LocalGameController extends ChangeNotifier implements GameTableData {
   @override
   void continueAfterHand() => _room.markReadyForNextHand(humanSeat);
 
+  @override
+  bool get viewerIsReadyForNextHand =>
+      _room.readyForNextHand.contains(humanSeat);
+
   // ------------------------------------------------------- GameTableData
   // Additive adapter members satisfying the shared table-widget interface
   // (see game_table_data.dart) — every member above stays exactly as it
@@ -170,6 +174,17 @@ class LocalGameController extends ChangeNotifier implements GameTableData {
 
   @override
   bool get isViewerTurnToBid => isHumanTurnToBid;
+
+  @override
+  Seat? get seatToAct {
+    if (phase == RoomPhase.bidding) return auction?.seatToAct;
+    if (phase == RoomPhase.playing) {
+      final trick = currentTrick;
+      if (trick == null || trick.isComplete) return null;
+      return trick.seatToPlay;
+    }
+    return null;
+  }
 
   @override
   bool get isViewerTurnToPlay => isHumanTurnToPlay;
