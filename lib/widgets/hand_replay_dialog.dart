@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../settings/app_settings.dart';
 import '../theme/pilotta_colors.dart';
+import 'pilotta_dialog.dart';
 import 'playing_card_widget.dart';
 import 'seat_layout.dart';
 import 'suit_icon.dart';
@@ -19,8 +20,8 @@ void showHandReplayDialog(
   required Seat viewerSeat,
   required int handNumber,
 }) {
-  showDialog<void>(
-    context: context,
+  showPilottaDialog<void>(
+    context,
     builder: (context) => _HandReplayDialog(
       result: result,
       viewerSeat: viewerSeat,

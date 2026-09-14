@@ -3,6 +3,7 @@ import 'package:pilotta_engine/pilotta_engine.dart';
 
 import '../theme/pilotta_colors.dart';
 import 'auction_call_label.dart';
+import 'pilotta_dialog.dart';
 
 /// Shows the full auction sequence for the hand currently in play — every
 /// call in order, each labelled with who made it. Since [Auction] stays put
@@ -15,8 +16,8 @@ void showAuctionHistoryDialog(
   required Seat viewerSeat,
   required String Function(Seat seat) seatLabel,
 }) {
-  showDialog<void>(
-    context: context,
+  showPilottaDialog<void>(
+    context,
     builder: (context) => Dialog(
       backgroundColor: PilottaColors.felt800,
       child: Padding(

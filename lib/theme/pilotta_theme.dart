@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'pilotta_colors.dart';
+import 'pilotta_page_transitions.dart';
 import 'pilotta_spacing.dart';
 import 'pilotta_typography.dart';
 
@@ -31,7 +32,16 @@ ThemeData buildPilottaTheme() {
     fontFamily: 'Roboto',
     textTheme: PilottaTypography.buildTextTheme(),
     splashFactory: InkSparkle.splashFactory,
-
+    pageTransitionsTheme: const PageTransitionsTheme(
+      builders: {
+        TargetPlatform.android: PilottaPageTransitionsBuilder(),
+        TargetPlatform.iOS: PilottaPageTransitionsBuilder(),
+        TargetPlatform.macOS: PilottaPageTransitionsBuilder(),
+        TargetPlatform.windows: PilottaPageTransitionsBuilder(),
+        TargetPlatform.linux: PilottaPageTransitionsBuilder(),
+        TargetPlatform.fuchsia: PilottaPageTransitionsBuilder(),
+      },
+    ),
     appBarTheme: const AppBarTheme(
       backgroundColor: Colors.transparent,
       foregroundColor: PilottaColors.ink50,
@@ -40,7 +50,6 @@ ThemeData buildPilottaTheme() {
       centerTitle: false,
       titleTextStyle: PilottaTypography.headline,
     ),
-
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         backgroundColor: PilottaColors.gold500,
@@ -53,7 +62,6 @@ ThemeData buildPilottaTheme() {
         padding: const EdgeInsets.symmetric(horizontal: PilottaSpacing.lg),
       ),
     ),
-
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
         foregroundColor: PilottaColors.ink50,
@@ -64,7 +72,6 @@ ThemeData buildPilottaTheme() {
         padding: const EdgeInsets.symmetric(horizontal: PilottaSpacing.lg),
       ),
     ),
-
     segmentedButtonTheme: SegmentedButtonThemeData(
       style: SegmentedButton.styleFrom(
         backgroundColor: PilottaColors.felt700,
@@ -75,13 +82,12 @@ ThemeData buildPilottaTheme() {
         textStyle: PilottaTypography.label,
       ),
     ),
-
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: PilottaColors.felt800,
       hintStyle: PilottaTypography.body.copyWith(color: PilottaColors.ink400),
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: PilottaSpacing.md, vertical: PilottaSpacing.sm + 2),
+      contentPadding: const EdgeInsets.symmetric(
+          horizontal: PilottaSpacing.md, vertical: PilottaSpacing.sm + 2),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide.none,
@@ -91,13 +97,12 @@ ThemeData buildPilottaTheme() {
         borderSide: const BorderSide(color: PilottaColors.gold500, width: 1.5),
       ),
     ),
-
     cardTheme: CardThemeData(
       color: PilottaColors.felt700,
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
     ),
-
-    dividerTheme: const DividerThemeData(color: PilottaColors.felt600, thickness: 1),
+    dividerTheme:
+        const DividerThemeData(color: PilottaColors.felt600, thickness: 1),
   );
 }
