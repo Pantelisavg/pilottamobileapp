@@ -12,6 +12,7 @@ import '../theme/pilotta_spacing.dart';
 import '../theme/pilotta_typography.dart';
 import '../widgets/felt_background.dart';
 import '../widgets/felt_panel.dart';
+import '../widgets/pressable_scale.dart';
 import '../widgets/target_score_selector.dart';
 import 'bluetooth_lobby_screen.dart';
 import 'local_game_screen.dart';
@@ -332,45 +333,47 @@ class _ModeMenuTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FeltPanel(
-      onTap: onTap,
-      padding: const EdgeInsets.symmetric(
-          horizontal: PilottaSpacing.md, vertical: PilottaSpacing.sm + 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: mode.color.withValues(alpha: 0.18),
-              shape: BoxShape.circle,
+    return PressableScale(
+      child: FeltPanel(
+        onTap: onTap,
+        padding: const EdgeInsets.symmetric(
+            horizontal: PilottaSpacing.md, vertical: PilottaSpacing.sm + 4),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: mode.color.withValues(alpha: 0.18),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(mode.icon, color: mode.color, size: 22),
             ),
-            child: Icon(mode.icon, color: mode.color, size: 22),
-          ),
-          const SizedBox(width: PilottaSpacing.sm),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ModeBadge(mode: mode, dense: true),
-                const SizedBox(height: PilottaSpacing.xxs),
-                Text(title,
-                    style: PilottaTypography.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 2),
-                Text(subtitle,
-                    style: PilottaTypography.bodyMuted,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis),
-              ],
+            const SizedBox(width: PilottaSpacing.sm),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ModeBadge(mode: mode, dense: true),
+                  const SizedBox(height: PilottaSpacing.xxs),
+                  Text(title,
+                      style: PilottaTypography.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 2),
+                  Text(subtitle,
+                      style: PilottaTypography.bodyMuted,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(width: PilottaSpacing.xs),
-          const Icon(Icons.chevron_right, color: PilottaColors.ink400),
-        ],
+            const SizedBox(width: PilottaSpacing.xs),
+            const Icon(Icons.chevron_right, color: PilottaColors.ink400),
+          ],
+        ),
       ),
     );
   }

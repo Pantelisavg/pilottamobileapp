@@ -57,10 +57,15 @@ class ScoreHeader extends StatelessWidget {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                      'Εμείς ${controller.totals[ourTeam]}  –  Αυτοί ${controller.totals[ourTeam.opponent]}',
-                      style: const TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.bold)),
+                  const Text('Εμείς ',
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  _AnimatedScoreNumber(value: controller.totals[ourTeam]!),
+                  const Text('  –  Αυτοί ',
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  _AnimatedScoreNumber(
+                      value: controller.totals[ourTeam.opponent]!),
                   const SizedBox(width: 4),
                   const Icon(Icons.receipt_long,
                       color: Colors.white54, size: 16),
@@ -98,6 +103,27 @@ class ScoreHeader extends StatelessWidget {
             ],
           ),
       ],
+    );
+  }
+}
+
+/// A running total that counts up (or down) to a new value over a short
+/// animation instead of just snapping to it — TweenAnimationBuilder picks
+/// up from wherever it currently sits whenever [value] changes, so this
+/// needs no manually-tracked "previous value" of its own.
+class _AnimatedScoreNumber extends StatelessWidget {
+  final int value;
+  const _AnimatedScoreNumber({required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<int>(
+      tween: IntTween(begin: value, end: value),
+      duration: const Duration(milliseconds: 400),
+      builder: (context, animatedValue, child) => Text(
+        '$animatedValue',
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+      ),
     );
   }
 }

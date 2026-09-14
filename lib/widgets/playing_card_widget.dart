@@ -22,6 +22,12 @@ class PlayingCardWidget extends StatelessWidget {
   final double width;
   final CardDeckStyle style;
 
+  /// Called instead of [onTap] when the card is tapped while
+  /// [selectable] is false — e.g. to trigger a "no, you can't play that"
+  /// shake. A card with neither callback set just ignores taps, same as
+  /// before this existed.
+  final VoidCallback? onIllegalTap;
+
   const PlayingCardWidget({
     super.key,
     this.card,
@@ -31,6 +37,7 @@ class PlayingCardWidget extends StatelessWidget {
     this.onTap,
     this.width = 56,
     this.style = CardDeckStyle.classic,
+    this.onIllegalTap,
   });
 
   @override
@@ -41,7 +48,7 @@ class PlayingCardWidget extends StatelessWidget {
         : (style == CardDeckStyle.modern ? _modernBack() : _back());
 
     return GestureDetector(
-      onTap: selectable ? onTap : null,
+      onTap: selectable ? onTap : onIllegalTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         width: width,
