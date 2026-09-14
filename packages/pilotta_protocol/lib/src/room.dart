@@ -408,11 +408,13 @@ class PilottaRoom {
     _maybeRunBotPlay();
   }
 
-  /// Bots always announce a declaration the instant they're able to (trick
-  /// 1) and reveal it immediately after (they never "forget"), for every
-  /// bot-controlled seat that hasn't already resolved theirs. Called
-  /// whenever a seat might have just become bot-controlled (a fresh hand,
-  /// or a human disconnecting mid-hand).
+  /// Bots always announce/reveal a declaration the instant it's legal for
+  /// them to (their own turn to play, in trick 1 for announcing and trick
+  /// 2 for revealing — see [PilottaHand.canAnnounceDeclaration]/
+  /// [PilottaHand.canRevealDeclaration]), for every bot-controlled seat
+  /// that hasn't already resolved theirs. Called whenever a seat might
+  /// have just become able to act: a fresh hand, a human disconnecting
+  /// mid-hand, after every card played, and after each new trick starts.
   void _maybeAutoDeclareForBots() {
     final h = hand;
     if (h == null) return;
@@ -517,6 +519,11 @@ class PilottaRoom {
     final h = hand;
     if (h == null) return;
     if (!h.currentTrick.isComplete) {
+      // The turn has just moved to a new seat — if it's bot-controlled and
+      // able to announce/reveal a declaration right now, it must do so
+      // this instant (the window is exactly their own turn to play).
+      _maybeAutoDeclareForBots();
+      _notify();
       _maybeRunBotPlay();
       return;
     }
@@ -528,6 +535,7 @@ class PilottaRoom {
         _finishHand();
       } else {
         h.startNextTrick();
+        _maybeAutoDeclareForBots();
         _notify();
         _maybeRunBotPlay();
       }

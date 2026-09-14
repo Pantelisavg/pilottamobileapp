@@ -217,15 +217,22 @@ class PilottaHand {
   }
 
   /// Whether [seat] may announce a (non-Pilotta) declaration right now:
-  /// only during trick 1, only once, and only if they actually hold one.
+  /// only during trick 1, only once, only if they actually hold one, and
+  /// only in the exact window it's their turn to play a card — not before
+  /// (waiting for their turn) and not after (once they've played it and
+  /// the turn has moved on), matching how it's actually called out at the
+  /// table as a player plays their trick-1 card.
   bool canAnnounceDeclaration(Seat seat) {
     if (completedTricks.isNotEmpty) return false;
     if (_declarationState[seat] != DeclarationAnnounceState.none) return false;
+    if (currentTrick.isComplete || currentTrick.seatToPlay != seat) {
+      return false;
+    }
     return bestDeclarationOf(seat) != null;
   }
 
-  /// Announces [seat]'s best declaration. It must still be revealed before
-  /// [seat] plays a card in trick 2, or [playCard] will forfeit it
+  /// Announces [seat]'s best declaration. It must still be revealed on
+  /// their turn to play in trick 2, or [playCard] will forfeit it
   /// automatically.
   void announceDeclaration(Seat seat) {
     if (!canAnnounceDeclaration(seat)) {
@@ -235,11 +242,16 @@ class PilottaHand {
   }
 
   /// Whether [seat] may reveal a previously-announced declaration right
-  /// now — any time after announcing, up until they play their card in
-  /// trick 2 (after which [playCard] auto-forfeits it).
+  /// now: only during trick 2 (never the same trick it was announced in),
+  /// and only in the exact window it's their turn to play a card — not
+  /// before, not after (once they've played it, [playCard] auto-forfeits
+  /// whatever's still unrevealed).
   bool canRevealDeclaration(Seat seat) {
-    return _declarationState[seat] == DeclarationAnnounceState.announced &&
-        completedTricks.length <= 1;
+    if (_declarationState[seat] != DeclarationAnnounceState.announced) {
+      return false;
+    }
+    if (completedTricks.length != 1) return false;
+    return !currentTrick.isComplete && currentTrick.seatToPlay == seat;
   }
 
   /// Reveals [seat]'s previously-announced declaration, making it eligible

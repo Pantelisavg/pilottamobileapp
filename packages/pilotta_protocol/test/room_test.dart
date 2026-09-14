@@ -399,84 +399,105 @@ void main() {
     test(
         'announcing/revealing a declaration pushes chat entries, without '
         'leaking its content before reveal', () {
-      final room =
-          PilottaRoom(roomCode: 'OOOO', targetScore: 101, random: Random(1));
-      for (final name in ['A', 'B', 'C', 'D']) {
-        room.join(name);
-      }
-      room.start();
-      final firstToAct = room.auction!.seatToAct;
-      room.handleBid(firstToAct, SuitBidCall(firstToAct, Suit.spades, 80));
-      var next = firstToAct.next;
-      while (room.phase == RoomPhase.bidding) {
-        room.handleBid(next, PassCall(next));
-        next = next.next;
-      }
+      fakeAsync((async) {
+        final room = PilottaRoom(
+            roomCode: 'OOOO',
+            targetScore: 101,
+            random: Random(1),
+            trickCollectDelay: const Duration(milliseconds: 5));
+        for (final name in ['A', 'B', 'C', 'D']) {
+          room.join(name);
+        }
+        room.start();
+        final firstToAct = room.auction!.seatToAct;
+        room.handleBid(firstToAct, SuitBidCall(firstToAct, Suit.spades, 80));
+        var next = firstToAct.next;
+        while (room.phase == RoomPhase.bidding) {
+          room.handleBid(next, PassCall(next));
+          next = next.next;
+        }
 
-      // Replace the dealt hand with one where South definitely holds a
-      // declaration (Jack-Ten-Nine of hearts, a 3-card sequence).
-      room.hand = PilottaHand(
-        contract: room.hand!.contract,
-        firstLeader: Seat.south,
-        initialHands: {
-          Seat.south: [
-            const PlayingCard(Suit.hearts, Rank.jack),
-            const PlayingCard(Suit.hearts, Rank.ten),
-            const PlayingCard(Suit.hearts, Rank.nine),
-            const PlayingCard(Suit.clubs, Rank.seven),
-            const PlayingCard(Suit.clubs, Rank.eight),
-            const PlayingCard(Suit.clubs, Rank.nine),
-            const PlayingCard(Suit.clubs, Rank.ten),
-            const PlayingCard(Suit.clubs, Rank.jack),
-          ],
-          Seat.west: [
-            const PlayingCard(Suit.hearts, Rank.seven),
-            const PlayingCard(Suit.hearts, Rank.eight),
-            const PlayingCard(Suit.hearts, Rank.queen),
-            const PlayingCard(Suit.hearts, Rank.king),
-            const PlayingCard(Suit.hearts, Rank.ace),
-            const PlayingCard(Suit.clubs, Rank.queen),
-            const PlayingCard(Suit.clubs, Rank.king),
-            const PlayingCard(Suit.clubs, Rank.ace),
-          ],
-          Seat.north: [
-            const PlayingCard(Suit.spades, Rank.seven),
-            const PlayingCard(Suit.spades, Rank.eight),
-            const PlayingCard(Suit.spades, Rank.nine),
-            const PlayingCard(Suit.spades, Rank.ten),
-            const PlayingCard(Suit.spades, Rank.jack),
-            const PlayingCard(Suit.spades, Rank.queen),
-            const PlayingCard(Suit.spades, Rank.king),
-            const PlayingCard(Suit.spades, Rank.ace),
-          ],
-          Seat.east: [
-            const PlayingCard(Suit.diamonds, Rank.seven),
-            const PlayingCard(Suit.diamonds, Rank.eight),
-            const PlayingCard(Suit.diamonds, Rank.nine),
-            const PlayingCard(Suit.diamonds, Rank.ten),
-            const PlayingCard(Suit.diamonds, Rank.jack),
-            const PlayingCard(Suit.diamonds, Rank.queen),
-            const PlayingCard(Suit.diamonds, Rank.king),
-            const PlayingCard(Suit.diamonds, Rank.ace),
-          ],
-        },
-      );
+        // Replace the dealt hand with one where South definitely holds a
+        // declaration (Jack-Ten-Nine of hearts, a 3-card sequence).
+        room.hand = PilottaHand(
+          contract: room.hand!.contract,
+          firstLeader: Seat.south,
+          initialHands: {
+            Seat.south: [
+              const PlayingCard(Suit.hearts, Rank.jack),
+              const PlayingCard(Suit.hearts, Rank.ten),
+              const PlayingCard(Suit.hearts, Rank.nine),
+              const PlayingCard(Suit.clubs, Rank.seven),
+              const PlayingCard(Suit.clubs, Rank.eight),
+              const PlayingCard(Suit.clubs, Rank.nine),
+              const PlayingCard(Suit.clubs, Rank.ten),
+              const PlayingCard(Suit.clubs, Rank.jack),
+            ],
+            Seat.west: [
+              const PlayingCard(Suit.hearts, Rank.seven),
+              const PlayingCard(Suit.hearts, Rank.eight),
+              const PlayingCard(Suit.hearts, Rank.queen),
+              const PlayingCard(Suit.hearts, Rank.king),
+              const PlayingCard(Suit.hearts, Rank.ace),
+              const PlayingCard(Suit.clubs, Rank.queen),
+              const PlayingCard(Suit.clubs, Rank.king),
+              const PlayingCard(Suit.clubs, Rank.ace),
+            ],
+            Seat.north: [
+              const PlayingCard(Suit.spades, Rank.seven),
+              const PlayingCard(Suit.spades, Rank.eight),
+              const PlayingCard(Suit.spades, Rank.nine),
+              const PlayingCard(Suit.spades, Rank.ten),
+              const PlayingCard(Suit.spades, Rank.jack),
+              const PlayingCard(Suit.spades, Rank.queen),
+              const PlayingCard(Suit.spades, Rank.king),
+              const PlayingCard(Suit.spades, Rank.ace),
+            ],
+            Seat.east: [
+              const PlayingCard(Suit.diamonds, Rank.seven),
+              const PlayingCard(Suit.diamonds, Rank.eight),
+              const PlayingCard(Suit.diamonds, Rank.nine),
+              const PlayingCard(Suit.diamonds, Rank.ten),
+              const PlayingCard(Suit.diamonds, Rank.jack),
+              const PlayingCard(Suit.diamonds, Rank.queen),
+              const PlayingCard(Suit.diamonds, Rank.king),
+              const PlayingCard(Suit.diamonds, Rank.ace),
+            ],
+          },
+        );
 
-      expect(room.handleAnnounceDeclaration(Seat.south), isNull);
-      expect(room.chatLog.last.kind, ChatEntryKind.declarationAnnounced);
-      expect(room.chatLog.last.seat, Seat.south);
-      expect(room.chatLog.last.declarations, isNull);
-      // Only the point value is spoken on announce — South's best here is
-      // the 5-card clubs run (100), not the hearts 3-run (20).
-      expect(room.chatLog.last.announcedValue, 100);
+        // South leads, so this is exactly their turn to play (and announce).
+        expect(room.handleAnnounceDeclaration(Seat.south), isNull);
+        expect(room.chatLog.last.kind, ChatEntryKind.declarationAnnounced);
+        expect(room.chatLog.last.seat, Seat.south);
+        expect(room.chatLog.last.declarations, isNull);
+        // Only the point value is spoken on announce — South's best here is
+        // the 5-card clubs run (100), not the hearts 3-run (20).
+        expect(room.chatLog.last.announcedValue, 100);
 
-      expect(room.handleRevealDeclaration(Seat.south), isNull);
-      expect(room.chatLog.last.kind, ChatEntryKind.declarationRevealed);
-      // South's dealt hand happens to hold two separate declarations here
-      // (hearts J-10-9 and clubs J-10-9-8-7) — both are revealed together.
-      expect(room.chatLog.last.declarations, hasLength(2));
+        // Revealing is a trick-2-only action — play out trick 1 first (a
+        // completed trick sits on the table for trickCollectDelay before the
+        // next one starts, so elapse past that after every play), then play
+        // trick 2 up to (not including) South's own turn.
+        while (room.hand!.completedTricks.isEmpty) {
+          final toAct = room.hand!.currentTrick.seatToPlay;
+          room.handlePlayCard(toAct, room.hand!.legalPlays(toAct).first);
+          async.elapse(const Duration(milliseconds: 10));
+        }
+        while (room.hand!.currentTrick.seatToPlay != Seat.south) {
+          final toAct = room.hand!.currentTrick.seatToPlay;
+          room.handlePlayCard(toAct, room.hand!.legalPlays(toAct).first);
+          async.elapse(const Duration(milliseconds: 10));
+        }
 
-      room.dispose();
+        expect(room.handleRevealDeclaration(Seat.south), isNull);
+        expect(room.chatLog.last.kind, ChatEntryKind.declarationRevealed);
+        // South's dealt hand happens to hold two separate declarations here
+        // (hearts J-10-9 and clubs J-10-9-8-7) — both are revealed together.
+        expect(room.chatLog.last.declarations, hasLength(2));
+
+        room.dispose();
+      });
     });
   });
 

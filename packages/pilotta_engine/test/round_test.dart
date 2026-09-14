@@ -8,26 +8,30 @@ import 'package:test/test.dart';
 /// integration tests that only care about invariants (point totals sum
 /// correctly) or about a scenario engineered to force a specific outcome.
 ///
-/// Also announces and immediately reveals every seat's declaration up
-/// front (mirroring how [SimpleBot] always announces) so tests written
-/// before the announce/reveal timing mechanic existed keep exercising the
-/// same "declarations always count" scenarios unless they opt out by
-/// managing announce/reveal themselves.
+/// Also announces (on a seat's trick-1 turn) and reveals (on their trick-2
+/// turn) every seat's declaration, mirroring how [SimpleBot] always
+/// announces, so tests written before the announce/reveal timing mechanic
+/// existed keep exercising the same "declarations always count" scenarios
+/// unless they opt out by managing announce/reveal themselves. Both are
+/// only ever legal in the exact window it's that seat's turn to play — see
+/// [PilottaHand.canAnnounceDeclaration]/[PilottaHand.canRevealDeclaration]
+/// — so this checks right before each [PilottaHand.playCard] call rather
+/// than doing it all upfront.
 void autoPlayToCompletion(PilottaHand hand, {bool autoDeclare = true}) {
-  if (autoDeclare) {
-    for (final seat in Seat.values) {
-      if (hand.canAnnounceDeclaration(seat)) {
-        hand.announceDeclaration(seat);
-        hand.revealDeclaration(seat);
-      }
-    }
-  }
   while (!hand.isHandComplete) {
     if (hand.currentTrick.isComplete) {
       hand.startNextTrick();
       continue;
     }
     final seat = hand.currentTrick.seatToPlay;
+    if (autoDeclare) {
+      if (hand.canAnnounceDeclaration(seat)) {
+        hand.announceDeclaration(seat);
+      }
+      if (hand.canRevealDeclaration(seat)) {
+        hand.revealDeclaration(seat);
+      }
+    }
     final card = hand.legalPlays(seat).first;
     hand.playCard(seat, card);
   }
@@ -531,6 +535,43 @@ void main() {
       expect(() => freshHand.announceDeclaration(Seat.south), throwsStateError);
     });
 
+    test(
+        'can only be announced in the exact window it is your turn to '
+        'play — not before, not after', () {
+      // South leads last in this trick (west -> north -> east -> south),
+      // so there's a real "before my turn" window to check.
+      final hand = PilottaHand(
+        contract: Contract(
+          biddingSeat: Seat.south,
+          trumpSuit: Suit.spades,
+          value: 80,
+          isCapot: false,
+        ),
+        initialHands: declarableHands(),
+        firstLeader: Seat.west,
+      );
+
+      // Before south's turn: not yet allowed, even though they hold a
+      // declarable hand and it's still trick 1.
+      expect(hand.canAnnounceDeclaration(Seat.south), isFalse);
+      expect(() => hand.announceDeclaration(Seat.south), throwsStateError);
+
+      hand.playCard(Seat.west, hand.legalPlays(Seat.west).first);
+      expect(hand.canAnnounceDeclaration(Seat.south), isFalse);
+      hand.playCard(Seat.north, hand.legalPlays(Seat.north).first);
+      expect(hand.canAnnounceDeclaration(Seat.south), isFalse);
+      hand.playCard(Seat.east, hand.legalPlays(Seat.east).first);
+
+      // Exactly south's turn now.
+      expect(hand.currentTrick.seatToPlay, Seat.south);
+      expect(hand.canAnnounceDeclaration(Seat.south), isTrue);
+
+      // South plays without announcing — the window has now closed.
+      hand.playCard(Seat.south, hand.legalPlays(Seat.south).first);
+      expect(hand.canAnnounceDeclaration(Seat.south), isFalse);
+      expect(() => hand.announceDeclaration(Seat.south), throwsStateError);
+    });
+
     test('revealing before playing your trick-2 card makes it count', () {
       final hand = makeHand();
       hand.announceDeclaration(Seat.south);
@@ -560,6 +601,39 @@ void main() {
       expect(result.declarations.winningTeam, Team.northSouth);
       expect(result.declarations.winningTeamPoints, 50);
       expect(result.declarations.forfeitedPerSeat, isEmpty);
+    });
+
+    test(
+        'cannot be revealed during trick 1 (the same trick it was '
+        'announced in) even though it is your turn to play', () {
+      final hand = makeHand();
+      hand.announceDeclaration(Seat.south);
+      // Still trick 1 — south already played their turn's declaration
+      // opportunity by announcing, but revealing is a trick-2-only action.
+      expect(hand.canRevealDeclaration(Seat.south), isFalse);
+      expect(() => hand.revealDeclaration(Seat.south), throwsStateError);
+    });
+
+    test(
+        'can only be revealed in the exact window it is your turn to '
+        'play in trick 2 — not before, not after', () {
+      final hand = makeHand();
+      hand.announceDeclaration(Seat.south);
+      playOneTrick(hand); // now in trick 2
+
+      // Whoever's turn it is before south's, revealing must stay locked.
+      while (hand.currentTrick.seatToPlay != Seat.south) {
+        final seat = hand.currentTrick.seatToPlay;
+        expect(hand.canRevealDeclaration(Seat.south), isFalse);
+        hand.playCard(seat, hand.legalPlays(seat).first);
+      }
+      expect(hand.canRevealDeclaration(Seat.south), isTrue);
+
+      // Playing without revealing closes the window — and forfeits it.
+      hand.playCard(Seat.south, hand.legalPlays(Seat.south).first);
+      expect(hand.canRevealDeclaration(Seat.south), isFalse);
+      expect(hand.declarationStateOf(Seat.south),
+          DeclarationAnnounceState.forfeited);
     });
 
     test(
