@@ -22,8 +22,16 @@ class AuctionStatusPanel extends StatelessWidget {
     final bid = auction.currentBid;
     final me = controller.viewerSeat;
 
+    // Same landscape-locked, height-is-scarce reasoning as the bidding
+    // panel below it — a compact tier keeps this panel's own natural
+    // height down, so on a short device it's less likely to ever need to
+    // fall back on the SingleChildScrollView below.
+    final compact = MediaQuery.sizeOf(context).height < 380;
+    final valueFontSize = compact ? 14.0 : 16.0;
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: EdgeInsets.symmetric(
+          horizontal: compact ? 12 : 16, vertical: compact ? 8 : 12),
       decoration: BoxDecoration(
         color: PilottaColors.felt800.withValues(alpha: 0.93),
         borderRadius: BorderRadius.circular(PilottaRadius.lg),
@@ -31,48 +39,50 @@ class AuctionStatusPanel extends StatelessWidget {
             Border.all(color: PilottaColors.gold500.withValues(alpha: 0.35)),
         boxShadow: PilottaColors.shadowRaised,
       ),
-      // SingleChildScrollView clamps to whatever height the Align/Stack
-      // above actually has available and scrolls instead of overflowing —
-      // on a short screen with the bidding panel also showing, this panel
-      // (bid status + history) can be taller than the space left for it.
+      // The parent (OvalTableArea) now passes this panel a real, explicit
+      // maxHeight via ConstrainedBox — so on a short screen where even the
+      // compact tier's content is still too tall, this actually scrolls
+      // instead of overflowing past the space reserved for it.
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('Δηλώσεις',
-                style: TextStyle(color: PilottaColors.ink200, fontSize: 12)),
-            const SizedBox(height: 6),
+            Text('Δηλώσεις',
+                style: TextStyle(
+                    color: PilottaColors.ink200, fontSize: compact ? 11 : 12)),
+            SizedBox(height: compact ? 4 : 6),
             if (bid == null)
-              const Text('Καμία δήλωση ακόμα',
+              Text('Καμία δήλωση ακόμα',
                   style: TextStyle(
                       color: PilottaColors.ink50,
-                      fontSize: 16,
+                      fontSize: valueFontSize,
                       fontWeight: FontWeight.bold))
             else
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text('${bid.isCapot ? 'Καπό' : bid.value} ',
-                      style: const TextStyle(
+                      style: TextStyle(
                           color: PilottaColors.ink50,
-                          fontSize: 16,
+                          fontSize: valueFontSize,
                           fontWeight: FontWeight.bold)),
-                  SuitIcon(bid.suit, size: 18, color: PilottaColors.ink50),
+                  SuitIcon(bid.suit,
+                      size: compact ? 15 : 18, color: PilottaColors.ink50),
                   Text(' — ${seatLabelRelativeTo(bid.seat, me)}',
-                      style: const TextStyle(
+                      style: TextStyle(
                           color: PilottaColors.ink50,
-                          fontSize: 16,
+                          fontSize: valueFontSize,
                           fontWeight: FontWeight.bold)),
                 ],
               ),
-            const SizedBox(height: 6),
+            SizedBox(height: compact ? 4 : 6),
             Text('Σειρά: ${seatLabelRelativeTo(auction.seatToAct, me)}',
-                style: const TextStyle(
-                    color: PilottaColors.gold300, fontSize: 12)),
+                style: TextStyle(
+                    color: PilottaColors.gold300, fontSize: compact ? 11 : 12)),
             if (auction.calls.isNotEmpty) ...[
-              const SizedBox(height: 10),
+              SizedBox(height: compact ? 6 : 10),
               Divider(height: 1, color: PilottaColors.felt600),
-              const SizedBox(height: 6),
+              SizedBox(height: compact ? 4 : 6),
               SizedBox(
                 width: 240,
                 child: AuctionRoundsGrid(calls: auction.calls, viewerSeat: me),

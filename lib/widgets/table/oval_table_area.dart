@@ -35,55 +35,74 @@ class OvalTableArea extends StatelessWidget {
   Widget build(BuildContext context) {
     final me = controller.viewerSeat;
 
-    return Stack(
-      children: [
-        Positioned.fill(
-          child: CustomPaint(painter: _TableFeltPainter()),
-        ),
-        for (final seat in Seat.values)
-          if (seat != me)
-            Align(
-              alignment: ovalSeatAlignment(seat, me),
-              child: opponentSeatBuilder?.call(seat) ??
-                  OpponentSeat(controller: controller, seat: seat),
+    // A LayoutBuilder here (rather than trusting Align/Stack to pass a
+    // bounded height through implicitly) gives AuctionStatusPanel a real,
+    // explicit maxHeight — it used to just render at its natural size,
+    // which on a short device during bidding (table area squeezed by the
+    // hand + bidding panel below) could run right up against, or past,
+    // where the hand panel starts, reading as the cards overlapping it.
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: CustomPaint(painter: _TableFeltPainter()),
             ),
-        Center(child: TrickArea(controller: controller)),
-        if (controller.phase == RoomPhase.bidding)
-          Align(
-            alignment: Alignment.center,
-            child: AuctionStatusPanel(controller: controller),
-          ),
-        if (controller.phase == RoomPhase.playing)
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: Center(child: TrickTrumpBadge(controller: controller)),
-          ),
-        if (controller.phase == RoomPhase.playing &&
-            controller.lastCompletedTrickPlayed != null)
-          Positioned(
-            top: 0,
-            left: 0,
-            child: LastTrickMiniPanel(controller: controller),
-          ),
-        if (controller.phase == RoomPhase.playing &&
-            (controller.auction?.calls.isNotEmpty ?? false))
-          Positioned(
-            top: 0,
-            right: 0,
-            child: IconButton(
-              tooltip: 'Πώς πήγαν οι δηλώσεις',
-              icon: const Icon(Icons.gavel, color: Colors.white70),
-              onPressed: () => showAuctionHistoryDialog(
-                context,
-                calls: controller.auction!.calls,
-                viewerSeat: me,
-                seatLabel: (seat) => seatLabelRelativeTo(seat, me),
+            for (final seat in Seat.values)
+              if (seat != me)
+                Align(
+                  alignment: ovalSeatAlignment(seat, me),
+                  child: opponentSeatBuilder?.call(seat) ??
+                      OpponentSeat(controller: controller, seat: seat),
+                ),
+            Center(child: TrickArea(controller: controller)),
+            if (controller.phase == RoomPhase.bidding)
+              Align(
+                alignment: Alignment.topCenter,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxHeight: (constraints.maxHeight - 12)
+                          .clamp(0, double.infinity),
+                    ),
+                    child: AuctionStatusPanel(controller: controller),
+                  ),
+                ),
               ),
-            ),
-          ),
-      ],
+            if (controller.phase == RoomPhase.playing)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: Center(child: TrickTrumpBadge(controller: controller)),
+              ),
+            if (controller.phase == RoomPhase.playing &&
+                controller.lastCompletedTrickPlayed != null)
+              Positioned(
+                top: 0,
+                left: 0,
+                child: LastTrickMiniPanel(controller: controller),
+              ),
+            if (controller.phase == RoomPhase.playing &&
+                (controller.auction?.calls.isNotEmpty ?? false))
+              Positioned(
+                top: 0,
+                right: 0,
+                child: IconButton(
+                  tooltip: 'Πώς πήγαν οι δηλώσεις',
+                  icon: const Icon(Icons.gavel, color: Colors.white70),
+                  onPressed: () => showAuctionHistoryDialog(
+                    context,
+                    calls: controller.auction!.calls,
+                    viewerSeat: me,
+                    seatLabel: (seat) => seatLabelRelativeTo(seat, me),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }
