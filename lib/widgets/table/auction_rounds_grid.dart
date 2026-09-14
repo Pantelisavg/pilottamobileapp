@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:pilotta_engine/pilotta_engine.dart';
 
+import '../../theme/pilotta_colors.dart';
 import '../auction_call_label.dart';
 import '../seat_layout.dart';
 
@@ -64,7 +65,7 @@ class AuctionRoundsGrid extends StatelessWidget {
                   seatLabelRelativeTo(seat, viewerSeat),
                   textAlign: TextAlign.center,
                   style: const TextStyle(
-                      color: Colors.white,
+                      color: PilottaColors.ink50,
                       fontSize: 12,
                       fontWeight: FontWeight.bold),
                 ),
@@ -74,10 +75,10 @@ class AuctionRoundsGrid extends StatelessWidget {
         for (var r = 0; r < rounds.length; r++) ...[
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 4),
-            child: Divider(height: 1, color: Colors.white24),
+            child: Divider(height: 1, color: PilottaColors.felt600),
           ),
           Text('ΓΥΡΟΣ ${r + 1}',
-              style: const TextStyle(color: Colors.white38, fontSize: 9)),
+              style: const TextStyle(color: PilottaColors.ink400, fontSize: 9)),
           const SizedBox(height: 2),
           Row(
             children: [
@@ -86,8 +87,8 @@ class AuctionRoundsGrid extends StatelessWidget {
                   child: Center(
                     child: rounds[r][seat] == null
                         ? const Text('–',
-                            style:
-                                TextStyle(color: Colors.white24, fontSize: 12))
+                            style: TextStyle(
+                                color: PilottaColors.ink400, fontSize: 12))
                         : auctionCallLabel(rounds[r][seat]!, '', fontSize: 12),
                   ),
                 ),

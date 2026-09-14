@@ -1,8 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:pilotta_engine/pilotta_engine.dart';
 
+import '../theme/pilotta_colors.dart';
+import '../theme/pilotta_spacing.dart';
+import '../theme/pilotta_typography.dart';
 import 'playing_card_widget.dart';
 import 'suit_icon.dart';
+
+/// A compact pill button style for the auction's call buttons (bid,
+/// Capot, double/redouble, pass) — the app theme's default [FilledButton]/
+/// [OutlinedButton] sizing (a 56px-tall full CTA) is meant for primary
+/// screen actions like "Play"/"Join room", and reads as an oversized bar
+/// here next to the compact suit chips above it.
+ButtonStyle _compactCallButton({Color? background}) => FilledButton.styleFrom(
+      backgroundColor: background,
+      minimumSize: const Size(0, 36),
+      padding: const EdgeInsets.symmetric(horizontal: PilottaSpacing.sm + 2),
+      textStyle: PilottaTypography.label.copyWith(fontSize: 13),
+      shape: const StadiumBorder(),
+    );
 
 /// The human player's bidding controls: pick a value + suit, call capot,
 /// double/redouble, or pass.
@@ -62,18 +78,23 @@ class _BiddingPanelState extends State<BiddingPanel> {
 
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
-      decoration: const BoxDecoration(
-        color: Color(0xFF10241D),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [PilottaColors.felt900, PilottaColors.felt800],
+        ),
+        borderRadius:
+            const BorderRadius.vertical(top: Radius.circular(PilottaRadius.lg)),
+        border: Border(
+          top: BorderSide(
+              color: PilottaColors.gold500.withValues(alpha: 0.35), width: 1),
+        ),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text('Η δήλωσή σου',
-              style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold)),
+          Text('Η δήλωσή σου', style: PilottaTypography.title),
           const SizedBox(height: 8),
           if (!canBidAtAll)
             Padding(
@@ -159,6 +180,7 @@ class _BiddingPanelState extends State<BiddingPanel> {
             alignment: WrapAlignment.center,
             children: [
               FilledButton(
+                style: _compactCallButton(),
                 onPressed: canBidValue
                     ? () =>
                         widget.onCall(SuitBidCall(widget.seat, _suit, value))
@@ -167,36 +189,41 @@ class _BiddingPanelState extends State<BiddingPanel> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text('${value ~/ 10} '),
-                    SuitIcon(_suit, size: 16),
+                    SuitIcon(_suit, size: 14),
                   ],
                 ),
               ),
-              FilledButton.tonal(
+              FilledButton(
+                style: _compactCallButton(background: PilottaColors.wood600),
                 onPressed: canCallCapot
                     ? () => widget.onCall(CapotCall(widget.seat, _suit))
                     : null,
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
-                  children: [const Text('Καπό '), SuitIcon(_suit, size: 16)],
+                  children: [const Text('Καπό '), SuitIcon(_suit, size: 14)],
                 ),
               ),
               if (_canDouble)
-                FilledButton.tonal(
-                  style: FilledButton.styleFrom(
-                      backgroundColor: Colors.orange.shade800),
+                FilledButton(
+                  style: _compactCallButton(background: Colors.orange.shade800),
                   onPressed: () => widget.onCall(DoubleCall(widget.seat)),
                   child: const Text('Κλειστό'),
                 ),
               if (_canRedouble)
-                FilledButton.tonal(
-                  style: FilledButton.styleFrom(
-                      backgroundColor: Colors.red.shade900),
+                FilledButton(
+                  style: _compactCallButton(background: Colors.red.shade900),
                   onPressed: () => widget.onCall(RedoubleCall(widget.seat)),
                   child: const Text('Ανοιχτό'),
                 ),
               OutlinedButton(
                 onPressed: () => widget.onCall(PassCall(widget.seat)),
-                style: OutlinedButton.styleFrom(foregroundColor: Colors.white),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(0, 36),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: PilottaSpacing.sm + 2),
+                  textStyle: PilottaTypography.label.copyWith(fontSize: 13),
+                ),
                 child: const Text('Πάσο'),
               ),
             ],

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:pilotta_engine/pilotta_engine.dart';
 
+import '../../theme/pilotta_colors.dart';
 import '../suit_icon.dart';
 import 'game_table_data.dart';
 
@@ -26,16 +27,19 @@ class TrickTrumpBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.black54,
+        color: PilottaColors.felt800.withValues(alpha: 0.93),
         borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: PilottaColors.gold500.withValues(alpha: 0.3)),
+        boxShadow: PilottaColors.shadowResting,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Text('Μπάζα $completedTricks/8',
-              style: const TextStyle(color: Colors.white70, fontSize: 11)),
+              style:
+                  const TextStyle(color: PilottaColors.ink200, fontSize: 11)),
           const SizedBox(width: 6),
-          SuitIcon(contract.trumpSuit, size: 13, color: Colors.white70),
+          SuitIcon(contract.trumpSuit, size: 13, color: PilottaColors.ink200),
         ],
       ),
     );

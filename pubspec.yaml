@@ -96,6 +96,20 @@ flutter:
           weight: 700
         - asset: assets/fonts/Roboto-Black.ttf
           weight: 900
+    # A serif display face for headlines/titles/the wordmark and card rank
+    # indices (see PilottaTypography, PlayingCardWidget) — everything else
+    # in the app stays on Roboto. Alegreya specifically (not the more
+    # common Playfair Display) because this app's UI text is Greek and
+    # Playfair Display's font file has no Greek glyphs at all — every
+    # Greek headline rendered as tofu boxes when tried, Alegreya covers
+    # Greek fully. Bundled directly for the same reason as Roboto above;
+    # SIL Open Font License, text alongside it in
+    # assets/fonts/Alegreya-OFL.txt. A single variable-weight file:
+    # Flutter maps a requested FontWeight onto its weight axis
+    # automatically.
+    - family: Alegreya
+      fonts:
+        - asset: assets/fonts/Alegreya-Variable.ttf
 
   # To add assets to your application, add an assets section, like this:
   # assets:

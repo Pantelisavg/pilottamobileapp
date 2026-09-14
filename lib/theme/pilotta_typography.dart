@@ -4,26 +4,29 @@ import 'pilotta_colors.dart';
 
 /// Pilotta's type scale.
 ///
-/// Deliberately uses Roboto (bundled directly as an app asset — see
-/// pubspec.yaml) rather than a custom display face: it renders identically
-/// on Android, iOS, and web with zero dependency on a font CDN being
-/// reachable, and no per-platform substitution to design around later.
-/// Character comes from weight, letter-spacing, and color instead of a
-/// novelty typeface — a bold, tracked-out, uppercase display style reads
-/// as "casino signage" without risking legibility.
+/// Body/UI text stays on Roboto (bundled directly as an app asset — see
+/// pubspec.yaml), which renders identically on Android, iOS, and web with
+/// zero dependency on a font CDN being reachable. The wordmark and section
+/// headers use a bundled serif display face (Alegreya, same
+/// zero-CDN-dependency bundling as Roboto) instead — a card-game wordmark
+/// reads as a wordmark rather than a generic app title with a display
+/// face, and that same face carried into headers gives every screen a
+/// "printed ledger" feel instead of flat sans-serif signage everywhere.
 abstract final class PilottaTypography {
   /// The wordmark / big screen titles ("ΠΙΛΟΤΤΑ").
   static const display = TextStyle(
-    fontSize: 40,
+    fontFamily: 'Alegreya',
+    fontSize: 44,
     fontWeight: FontWeight.w800,
-    letterSpacing: 4,
+    letterSpacing: 2,
     color: PilottaColors.ink50,
     height: 1.05,
   );
 
   /// Screen-level titles (app bar titles, dialog headers).
   static const headline = TextStyle(
-    fontSize: 22,
+    fontFamily: 'Alegreya',
+    fontSize: 23,
     fontWeight: FontWeight.w700,
     letterSpacing: 0.2,
     color: PilottaColors.ink50,
@@ -31,8 +34,9 @@ abstract final class PilottaTypography {
 
   /// Section / card titles ("Δημιουργία νέου δωματίου").
   static const title = TextStyle(
-    fontSize: 17,
-    fontWeight: FontWeight.w600,
+    fontFamily: 'Alegreya',
+    fontSize: 18,
+    fontWeight: FontWeight.w700,
     color: PilottaColors.ink50,
   );
 

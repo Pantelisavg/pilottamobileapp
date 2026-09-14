@@ -89,9 +89,9 @@ class OvalTableArea extends StatelessWidget {
 }
 
 /// The felt oval itself — a soft radial highlight (as if lit from above)
-/// inside a thin gold rim, inset from the full rectangular table area so
-/// it reads as an object sitting on the surface rather than the surface
-/// itself.
+/// inside an ornate double-line gold rim, inset from the full rectangular
+/// table area so it reads as an object sitting on the surface rather than
+/// the surface itself.
 class _TableFeltPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
@@ -106,17 +106,26 @@ class _TableFeltPainter extends CustomPainter {
       ).createShader(ovalRect);
     canvas.drawOval(ovalRect, fillPaint);
 
-    final rimPaint = Paint()
+    // A heavier outer band plus a finer inset line — an engraved
+    // double-line rim reads as a deliberately-made table edge, not a
+    // default one-pixel border.
+    final outerRim = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 3
+      ..strokeWidth = 5
       ..shader = const LinearGradient(
         colors: [
           PilottaColors.gold700,
           PilottaColors.gold300,
-          PilottaColors.gold700
+          PilottaColors.gold700,
         ],
       ).createShader(ovalRect);
-    canvas.drawOval(ovalRect.deflate(1.5), rimPaint);
+    canvas.drawOval(ovalRect.deflate(2.5), outerRim);
+
+    final innerRim = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1
+      ..color = PilottaColors.gold300.withValues(alpha: 0.55);
+    canvas.drawOval(ovalRect.deflate(7), innerRim);
   }
 
   @override

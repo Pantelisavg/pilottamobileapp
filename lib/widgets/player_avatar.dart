@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/pilotta_colors.dart';
+import 'tavern_avatar_glyph.dart';
 
 /// A circular "portrait" for a seat — since there are no real player
 /// photos, a tinted wood-toned disc with a person/bot glyph stands in for
@@ -117,8 +118,8 @@ class _PlayerAvatarState extends State<PlayerAvatar>
                   child: child,
                 );
               },
-              child: Icon(
-                widget.isBot ? Icons.smart_toy_outlined : Icons.person,
+              child: TavernAvatarGlyph(
+                isBot: widget.isBot,
                 color: Colors.white70,
                 size: widget.size * 0.52,
               ),

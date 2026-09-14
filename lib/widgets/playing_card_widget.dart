@@ -3,6 +3,7 @@ import 'package:pilotta_engine/pilotta_engine.dart';
 
 import '../settings/card_deck_style.dart';
 import '../theme/pilotta_colors.dart';
+import 'court_card_emblem.dart';
 import 'suit_icon.dart';
 
 Color suitColor(Suit suit) =>
@@ -64,8 +65,10 @@ class PlayingCardWidget extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
+            // Modern's face reads warmer/richer (parchment-like) than
+            // classic's near-white, closer to an illustrated card stock.
             colors: style == CardDeckStyle.modern
-                ? const [Color(0xFFFFFDF7), PilottaColors.cardFace]
+                ? const [Color(0xFFFAF3E1), Color(0xFFF0E4C7)]
                 : [Colors.white, PilottaColors.cardFace],
           ),
           borderRadius: BorderRadius.circular(width * 0.12),
@@ -78,10 +81,13 @@ class PlayingCardWidget extends StatelessWidget {
             width: selectable ? 2.5 : (style == CardDeckStyle.modern ? 1.4 : 1),
           ),
           boxShadow: [
+            // A more pronounced shadow than a flat rectangle needs — cards
+            // now fan out overlapping and slightly rotated, so a visible
+            // cast shadow is what actually sells the depth between them.
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.35),
-              blurRadius: 4,
-              offset: const Offset(1, 2),
+              color: Colors.black.withValues(alpha: 0.45),
+              blurRadius: 8,
+              offset: const Offset(2, 4),
             ),
           ],
         ),
@@ -107,6 +113,7 @@ class PlayingCardWidget extends StatelessWidget {
                   children: [
                     Text(c.rank.short,
                         style: TextStyle(
+                            fontFamily: 'Alegreya',
                             color: color,
                             fontWeight: FontWeight.bold,
                             fontSize: fontSize * 0.62,
@@ -148,6 +155,7 @@ class PlayingCardWidget extends StatelessWidget {
                 children: [
                   Text(c.rank.short,
                       style: TextStyle(
+                          fontFamily: 'Alegreya',
                           color: color,
                           fontWeight: FontWeight.bold,
                           fontSize: fontSize * 0.5,
@@ -161,11 +169,25 @@ class PlayingCardWidget extends StatelessWidget {
           padding: EdgeInsets.all(w * 0.07),
           child: Stack(
             children: [
+              // A second, thinner gold line inset from the card's own
+              // outer border — the "engraved paper" double-line frame a
+              // plain single border doesn't give.
+              Positioned.fill(
+                child: CustomPaint(
+                    painter: _InnerFramePainter(
+                        PilottaColors.gold500.withValues(alpha: 0.55))),
+              ),
               Align(alignment: Alignment.topLeft, child: corner()),
               Align(
                 alignment: Alignment.bottomRight,
                 child: Transform.rotate(angle: 3.14159, child: corner()),
               ),
+              if (CourtCardEmblem.appliesTo(c.rank))
+                Align(
+                  alignment: const Alignment(0, -0.55),
+                  child: CourtCardEmblem(
+                      rank: c.rank, color: color, size: fontSize * 0.42),
+                ),
               Center(
                 child: Container(
                   padding: EdgeInsets.all(fontSize * 0.18),
@@ -229,6 +251,31 @@ class PlayingCardWidget extends StatelessWidget {
       ),
     );
   }
+}
+
+/// A single thin inset rounded-rect stroke — [PlayingCardWidget]'s modern
+/// face draws this just inside its own outer border, for the "engraved
+/// paper" double-line frame look.
+class _InnerFramePainter extends CustomPainter {
+  final Color color;
+  _InnerFramePainter(this.color);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1;
+    final rect = Offset.zero & size;
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(rect, Radius.circular(size.width * 0.1)),
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _InnerFramePainter oldDelegate) =>
+      oldDelegate.color != color;
 }
 
 /// A gold diagonal lattice over the navy field of the modern card back —

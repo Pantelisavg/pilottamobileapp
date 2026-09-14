@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../theme/pilotta_typography.dart';
 import 'game_table_data.dart';
 
 /// The final win/loss screen — shared replacement for local's
@@ -20,10 +21,7 @@ class MatchOverOverlay extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(weWon ? 'Κερδίσατε!' : 'Χάσατε',
-              style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 30,
-                  fontWeight: FontWeight.bold)),
+              style: PilottaTypography.display.copyWith(fontSize: 34)),
           const SizedBox(height: 8),
           Text(
               '${controller.totals[ourTeam]} – ${controller.totals[ourTeam.opponent]}',
