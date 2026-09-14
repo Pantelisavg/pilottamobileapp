@@ -3,13 +3,14 @@ import 'package:pilotta_engine/pilotta_engine.dart';
 import 'package:pilotta_protocol/pilotta_protocol.dart';
 
 import '../auction_history_dialog.dart';
-import '../last_trick_dialog.dart';
 import '../seat_layout.dart';
 import 'auction_status_panel.dart';
 import 'game_table_data.dart';
+import 'last_trick_mini_panel.dart';
 import 'opponent_seat.dart';
 import 'oval_geometry.dart';
 import 'trick_area.dart';
+import 'trick_trump_badge.dart';
 
 /// The table itself: the 3 opponents positioned around an oval, the current
 /// trick in the middle, the live auction panel while bidding, and the
@@ -48,21 +49,19 @@ class OvalTableArea extends StatelessWidget {
             alignment: Alignment.center,
             child: AuctionStatusPanel(controller: controller),
           ),
+        if (controller.phase == RoomPhase.playing)
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Center(child: TrickTrumpBadge(controller: controller)),
+          ),
         if (controller.phase == RoomPhase.playing &&
             controller.lastCompletedTrickPlayed != null)
           Positioned(
             top: 0,
             left: 0,
-            child: IconButton(
-              tooltip: 'Προηγούμενη μπάζα',
-              icon: const Icon(Icons.history, color: Colors.white70),
-              onPressed: () => showLastTrickDialog(
-                context,
-                played: controller.lastCompletedTrickPlayed!,
-                winner: controller.lastCompletedTrickWinner,
-                viewerSeat: me,
-              ),
-            ),
+            child: LastTrickMiniPanel(controller: controller),
           ),
         if (controller.phase == RoomPhase.playing &&
             (controller.auction?.calls.isNotEmpty ?? false))
