@@ -32,8 +32,11 @@ void main() {
         .setMockMethodCallHandler(channel, null);
   });
 
-  test('the host claims south, sees a lobby snapshot, and can start solo (bots fill the rest)', () {
-    final session = BluetoothHostSession(hostName: 'Οικοδεσπότης', targetScore: 101);
+  test(
+      'the host claims south, sees a lobby snapshot, and can start solo (bots fill the rest)',
+      () {
+    final session =
+        BluetoothHostSession(hostName: 'Οικοδεσπότης', targetScore: 101);
 
     expect(session.mySeat, Seat.south);
     expect(session.roomCode, isNotEmpty);
@@ -56,7 +59,8 @@ void main() {
   test('the host can bid through submitBid like any RoomClientController', () {
     // Seed 1 places south (the host) first to act in the auction, so this
     // interaction is deterministic without needing real bot timers to fire.
-    final session = BluetoothHostSession(hostName: 'H', targetScore: 101, random: Random(1));
+    final session = BluetoothHostSession(
+        hostName: 'H', targetScore: 101, random: Random(1));
     session.start();
 
     expect(session.isMyTurnToBid, isTrue);
@@ -69,6 +73,36 @@ void main() {
     expect(auctionAfter.calls, hasLength(1));
     expect(auctionAfter.currentBid?.value, 80);
     expect(session.isMyTurnToBid, isFalse);
+
+    session.dispose();
+  });
+
+  test(
+      'satisfies GameTableData the same way LocalGameController does, so '
+      'a shared table widget can be built against either', () {
+    final session =
+        BluetoothHostSession(hostName: 'Οικοδεσπότης', targetScore: 101);
+    session.start();
+
+    expect(session.viewerSeat, Seat.south);
+    expect(session.phase, RoomPhase.bidding);
+    expect(session.contract, isNull); // still bidding — no contract yet
+    expect(session.currentTrick, isNull); // not playing yet either
+    expect(session.myHand, hasLength(8));
+    expect(session.handSizeOf(Seat.south), 8);
+    expect(session.handSizeOf(Seat.west), 8);
+    expect(session.isBotControlled(Seat.south), isFalse);
+    expect(session.isBotControlled(Seat.west), isTrue);
+    expect(session.isViewerTurnToBid, session.isMyTurnToBid);
+    expect(session.targetScore, 101);
+    expect(session.totals[Team.northSouth], 0);
+    expect(session.totals[Team.eastWest], 0);
+    expect(session.matchWinner, isNull);
+    expect(session.matchHistory, isEmpty);
+    expect(session.lastHandResult, isNull);
+    expect(session.lastCompletedTrickPlayed, isNull);
+    expect(session.canAnnounceDeclaration, isFalse);
+    expect(session.canRevealDeclaration, isFalse);
 
     session.dispose();
   });

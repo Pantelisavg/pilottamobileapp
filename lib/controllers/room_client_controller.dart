@@ -2,6 +2,9 @@ import 'package:flutter/foundation.dart';
 import 'package:pilotta_engine/pilotta_engine.dart';
 import 'package:pilotta_protocol/pilotta_protocol.dart';
 
+import '../widgets/declaration_label.dart';
+import '../widgets/table/game_table_data.dart';
+
 enum ConnectionStatus { connecting, connected, disconnected }
 
 /// The client side of the room protocol, transport-agnostic: everything a
@@ -15,7 +18,8 @@ enum ConnectionStatus { connecting, connected, disconnected }
 /// [auction] is rebuilt locally by replaying the snapshot's public call
 /// log, purely so [BiddingPanel] can be reused unmodified without the
 /// transport needing to serialize anything auction-specific.
-abstract class RoomClientController extends ChangeNotifier {
+abstract class RoomClientController extends ChangeNotifier
+    implements GameTableData {
   ConnectionStatus status = ConnectionStatus.connecting;
   String? roomCode;
   Seat? mySeat;
@@ -71,20 +75,26 @@ abstract class RoomClientController extends ChangeNotifier {
 
   void start() => sendMessage(const StartMessage());
 
+  @override
   void submitBid(AuctionCall call) => sendMessage(BidMessage(call));
 
+  @override
   void playCard(PlayingCard card) => sendMessage(PlayCardMessage(card));
 
   /// Announces this player's best declaration (only valid during trick 1).
+  @override
   void announceDeclaration() => sendMessage(const AnnounceDeclarationMessage());
 
   /// Reveals a previously-announced declaration (must happen before this
   /// player's trick-2 card).
+  @override
   void revealDeclaration() => sendMessage(const RevealDeclarationMessage());
 
+  @override
   void continueAfterHand() => sendMessage(const ReadyForNextHandMessage());
 
   /// Sends a free-text chat message, visible to every seat.
+  @override
   void sendChat(String text) => sendMessage(SendChatMessage(text));
 
   void leaveRoom() => sendMessage(const LeaveMessage());
@@ -95,15 +105,19 @@ abstract class RoomClientController extends ChangeNotifier {
 
   /// The room's shared chat/event log — player messages interleaved with
   /// declaration and Pilotta/Repilotta announcements, oldest first.
+  @override
   List<ChatEntry> get chatLog => snapshot?.chatLog ?? const [];
 
   bool get isHost => mySeat == Seat.south;
 
+  @override
   Auction? get auction {
     final calls = snapshot?.auctionCalls;
     if (calls == null) return null;
     final decoded = calls.map(auctionCallFromJson).toList();
-    final startingSeat = decoded.isNotEmpty ? decoded.first.seat : (snapshot!.seatToAct ?? Seat.south);
+    final startingSeat = decoded.isNotEmpty
+        ? decoded.first.seat
+        : (snapshot!.seatToAct ?? Seat.south);
     final rebuilt = Auction(startingSeat);
     for (final call in decoded) {
       rebuilt.apply(call);
@@ -122,6 +136,7 @@ abstract class RoomClientController extends ChangeNotifier {
   /// flag). Legality only ever depends on this plus the viewer's own hand
   /// — never on other players' hidden cards — so this is exact, not a
   /// heuristic guess at what the server would accept.
+  @override
   Trick? get currentTrick {
     final snap = snapshot;
     final contract = snap?.contract;
@@ -152,5 +167,114 @@ abstract class RoomClientController extends ChangeNotifier {
     // — nobody may play into it meanwhile.
     if (trick.isComplete) return const [];
     return trick.legalPlays(snap.yourHand);
+  }
+
+  // ------------------------------------------------------- GameTableData
+  // Additive adapter members satisfying the shared table-widget interface
+  // (see game_table_data.dart) — decoded from the JSON snapshot on access,
+  // same approach as [auction]/[currentTrick] above. Only meaningful once
+  // [inRoom] is true, same precondition every other member here already
+  // has (a table-widget consumer is never built before then).
+
+  @override
+  RoomPhase get phase => snapshot!.phase;
+
+  @override
+  Seat get viewerSeat => mySeat!;
+
+  @override
+  String? get banner => snapshot?.banner;
+
+  @override
+  bool get isViewerTurnToBid => isMyTurnToBid;
+
+  @override
+  Contract? get contract {
+    final json = snapshot?.contract;
+    return json == null ? null : contractFromJson(json);
+  }
+
+  @override
+  List<PlayingCard> get myHand => snapshot?.yourHand ?? const [];
+
+  @override
+  int handSizeOf(Seat seat) =>
+      seat == mySeat ? myHand.length : (snapshot?.handSizes[seat] ?? 0);
+
+  @override
+  bool isBotControlled(Seat seat) => snapshot?.seats[seat]?.isBot ?? false;
+
+  @override
+  bool get isViewerTurnToPlay => isMyTurnToPlay;
+
+  @override
+  List<PlayingCard> get viewerLegalPlays => legalPlaysForMe;
+
+  @override
+  List<({Seat seat, PlayingCard card})>? get lastCompletedTrickPlayed {
+    final played = snapshot?.lastCompletedTrick;
+    if (played == null) return null;
+    return [
+      for (final e in played)
+        (
+          seat: Seat.values.byName(e['seat'] as String),
+          card: cardFromJson(e['card'] as Map<String, dynamic>),
+        ),
+    ];
+  }
+
+  @override
+  Seat? get lastCompletedTrickWinner => snapshot?.lastCompletedTrickWinner;
+
+  @override
+  String? get myBestDeclarationLabel {
+    final json = snapshot?.yourBestDeclaration;
+    return json == null ? null : declarationPointsLabelFromJson(json);
+  }
+
+  @override
+  bool get canAnnounceDeclaration => snapshot?.canAnnounceDeclaration ?? false;
+
+  @override
+  bool get canRevealDeclaration => snapshot?.canRevealDeclaration ?? false;
+
+  @override
+  DeclarationAnnounceState declarationStateOf(Seat seat) {
+    final name = snapshot?.declarationStates[seat];
+    return name == null
+        ? DeclarationAnnounceState.none
+        : DeclarationAnnounceState.values.byName(name);
+  }
+
+  @override
+  String? revealedDeclarationsLabelOf(Seat seat) {
+    final declarations = snapshot?.revealedDeclarations[seat];
+    if (declarations == null || declarations.isEmpty) return null;
+    return declarationsPointsLabelFromJsonList(declarations);
+  }
+
+  @override
+  List<HandResult> get matchHistory =>
+      snapshot?.matchHistory.map(handResultFromJson).toList() ?? const [];
+
+  @override
+  HandResult? get lastHandResult {
+    final json = snapshot?.lastHandResult;
+    return json == null ? null : handResultFromJson(json);
+  }
+
+  @override
+  int get targetScore => snapshot?.targetScore ?? 0;
+
+  @override
+  Map<Team, int> get totals => {
+        for (final e in (snapshot?.totals ?? const <String, int>{}).entries)
+          Team.values.byName(e.key): e.value,
+      };
+
+  @override
+  Team? get matchWinner {
+    final name = snapshot?.winnerTeam;
+    return name == null ? null : Team.values.byName(name);
   }
 }

@@ -8,6 +8,42 @@ import 'package:pilotta_protocol/pilotta_protocol.dart';
 
 void main() {
   test(
+      'satisfies GameTableData right after dealing — used by the shared '
+      'table widget to render bidding, hand, and match state', () {
+    fakeAsync((async) {
+      final controller = LocalGameController(
+        targetScore: 101,
+        random: Random(7),
+        trickCollectDelay: const Duration(milliseconds: 5),
+        persistProgress: false,
+      );
+
+      expect(controller.viewerSeat, controller.humanSeat);
+      expect(controller.phase, RoomPhase.bidding);
+      expect(controller.contract, isNull);
+      expect(controller.currentTrick, isNull);
+      expect(controller.myHand, hasLength(8));
+      expect(controller.handSizeOf(controller.humanSeat), 8);
+      expect(controller.handSizeOf(controller.humanSeat.partner), 8);
+      expect(controller.isViewerTurnToBid, controller.isHumanTurnToBid);
+      expect(controller.isViewerTurnToPlay, isFalse);
+      expect(controller.targetScore, 101);
+      expect(controller.totals[Team.northSouth], 0);
+      expect(controller.totals[Team.eastWest], 0);
+      expect(controller.matchWinner, isNull);
+      expect(controller.matchHistory, isEmpty);
+      expect(controller.lastCompletedTrickPlayed, isNull);
+      expect(controller.declarationStateOf(controller.humanSeat),
+          DeclarationAnnounceState.none);
+      expect(
+          controller.revealedDeclarationsLabelOf(controller.humanSeat), isNull);
+
+      controller.dispose();
+      async.elapse(const Duration(seconds: 1));
+    });
+  });
+
+  test(
       'a full match can be played to completion with the human always passing '
       'and playing its first legal card', () {
     fakeAsync((async) {
