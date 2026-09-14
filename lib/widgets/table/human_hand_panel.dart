@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../settings/app_settings.dart';
 import '../../settings/sound.dart';
+import '../../theme/pilotta_colors.dart';
 import '../fanned_hand.dart';
 import '../hand_sort.dart';
 import '../illegal_reason.dart';
@@ -39,7 +40,23 @@ class HumanHandPanel extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-      color: const Color(0xFF082A20),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [PilottaColors.felt900, PilottaColors.felt800],
+        ),
+        border: Border(
+          top: BorderSide(
+              color: PilottaColors.gold500.withValues(alpha: 0.25), width: 1),
+        ),
+        boxShadow: [
+          BoxShadow(
+              color: PilottaColors.felt900.withValues(alpha: 0.5),
+              blurRadius: 12,
+              offset: const Offset(0, -4)),
+        ],
+      ),
       child: Stack(
         children: [
           Column(

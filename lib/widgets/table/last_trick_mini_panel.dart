@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../settings/app_settings.dart';
+import '../../theme/pilotta_colors.dart';
 import '../last_trick_dialog.dart';
 import '../playing_card_widget.dart';
 import 'game_table_data.dart';
@@ -33,17 +34,18 @@ class LastTrickMiniPanel extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
-          color: Colors.black54,
+          color: PilottaColors.felt800.withValues(alpha: 0.93),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: wonByMe ? Colors.lightGreenAccent : Colors.white24,
+            color: wonByMe ? PilottaColors.success500 : PilottaColors.felt600,
           ),
+          boxShadow: PilottaColors.shadowResting,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             const Text('Προηγούμενη μπάζα',
-                style: TextStyle(color: Colors.white54, fontSize: 8)),
+                style: TextStyle(color: PilottaColors.ink400, fontSize: 8)),
             const SizedBox(height: 2),
             Row(
               mainAxisSize: MainAxisSize.min,

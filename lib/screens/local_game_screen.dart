@@ -8,6 +8,7 @@ import '../settings/sound.dart';
 import '../widgets/bidding_panel.dart';
 import '../widgets/chat_flash_banner.dart';
 import '../widgets/chat_panel.dart';
+import '../widgets/felt_background.dart';
 import '../widgets/table/cheat_sheet_button.dart';
 import '../widgets/table/declaration_panel.dart';
 import '../widgets/table/hand_summary_overlay.dart';
@@ -58,71 +59,71 @@ class _GameView extends StatelessWidget {
     final controller = context.watch<LocalGameController>();
 
     return LeaveTableScope(
-      child: Scaffold(
-        backgroundColor: const Color(0xFF0B3D2E),
-        appBar: AppBar(
-          backgroundColor: const Color(0xFF082A20),
-          foregroundColor: Colors.white,
-          title: ScoreHeader(controller: controller),
-          titleSpacing: 12,
-          actions: [
-            const CheatSheetButton(),
-            IconButton(
-              icon: const Icon(Icons.chat_bubble_outline),
-              tooltip: 'Συνομιλία',
-              onPressed: () => showChatPanel(
-                context,
-                listenable: controller,
-                chatLogOf: () => controller.chatLog,
-                viewerSeat: controller.humanSeat,
-                onSend: controller.sendChat,
+      child: FeltBackground(
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          appBar: AppBar(
+            title: ScoreHeader(controller: controller),
+            titleSpacing: 12,
+            actions: [
+              const CheatSheetButton(),
+              IconButton(
+                icon: const Icon(Icons.chat_bubble_outline),
+                tooltip: 'Συνομιλία',
+                onPressed: () => showChatPanel(
+                  context,
+                  listenable: controller,
+                  chatLogOf: () => controller.chatLog,
+                  viewerSeat: controller.humanSeat,
+                  onSend: controller.sendChat,
+                ),
               ),
-            ),
-            const LeaveTableButton(),
-          ],
-        ),
-        body: SafeArea(
-          child: Stack(
-            children: [
-              Column(
-                children: [
-                  if (controller.banner != null)
-                    Container(
-                      width: double.infinity,
-                      color: Colors.amber.shade800,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 6),
-                      child: Text(controller.banner!,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                              color: Colors.white, fontSize: 12)),
-                    ),
-                  Expanded(child: OvalTableArea(controller: controller)),
-                  if (controller.canAnnounceDeclaration ||
-                      controller.canRevealDeclaration)
-                    DeclarationPanel(controller: controller),
-                  // The hand stays visible above the bidding panel — you
-                  // need to see your cards while you decide what to call.
-                  HumanHandPanel(controller: controller),
-                  if (controller.isHumanTurnToBid)
-                    BiddingPanel(
-                      auction: controller.auction!,
-                      seat: controller.humanSeat,
-                      onCall: (call) {
-                        playTapSound(context.read<AppSettings>());
-                        controller.submitBid(call);
-                      },
-                    ),
-                ],
-              ),
-              if (controller.phase == RoomPhase.handSummary)
-                HandSummaryOverlay(controller: controller),
-              if (controller.phase == RoomPhase.matchOver)
-                MatchOverOverlay(controller: controller),
-              ChatFlashBanner(
-                  chatLog: controller.chatLog,
-                  viewerSeat: controller.humanSeat),
+              const LeaveTableButton(),
             ],
+          ),
+          body: SafeArea(
+            child: Stack(
+              children: [
+                Column(
+                  children: [
+                    if (controller.banner != null)
+                      Container(
+                        width: double.infinity,
+                        color: Colors.amber.shade800,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
+                        child: Text(controller.banner!,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                                color: Colors.white, fontSize: 12)),
+                      ),
+                    Expanded(child: OvalTableArea(controller: controller)),
+                    if (controller.canAnnounceDeclaration ||
+                        controller.canRevealDeclaration)
+                      DeclarationPanel(controller: controller),
+                    // The hand stays visible above the bidding panel — you
+                    // need to see your cards while you decide what to call.
+                    HumanHandPanel(controller: controller),
+                    if (controller.isHumanTurnToBid)
+                      BiddingPanel(
+                        auction: controller.auction!,
+                        seat: controller.humanSeat,
+                        onCall: (call) {
+                          playTapSound(context.read<AppSettings>());
+                          controller.submitBid(call);
+                        },
+                      ),
+                  ],
+                ),
+                if (controller.phase == RoomPhase.handSummary)
+                  HandSummaryOverlay(controller: controller),
+                if (controller.phase == RoomPhase.matchOver)
+                  MatchOverOverlay(controller: controller),
+                ChatFlashBanner(
+                    chatLog: controller.chatLog,
+                    viewerSeat: controller.humanSeat),
+              ],
+            ),
           ),
         ),
       ),

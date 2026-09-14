@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../theme/pilotta_colors.dart';
 import 'game_table_data.dart';
 
 /// The "you have a declaration — announce/reveal it" bar — shared
@@ -17,7 +18,11 @@ class DeclarationPanel extends StatelessWidget {
     final canAnnounce = controller.canAnnounceDeclaration;
     return Container(
       width: double.infinity,
-      color: Colors.indigo.shade900,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [PilottaColors.gold700, PilottaColors.gold500],
+        ),
+      ),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         children: [
@@ -26,15 +31,24 @@ class DeclarationPanel extends StatelessWidget {
               canAnnounce
                   ? 'Έχεις $label — δήλωσέ το τώρα!'
                   : 'Αποκάλυψε τη δήλωσή σου πριν παίξεις, αλλιώς χάνεται!',
-              style: const TextStyle(color: Colors.white, fontSize: 12),
+              style: const TextStyle(
+                  color: PilottaColors.ink900,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600),
             ),
           ),
           const SizedBox(width: 8),
           FilledButton(
             // Overrides the theme's full-width (Size.fromHeight) minimumSize,
             // which forces an infinite width crash for a button placed next
-            // to something else in a Row instead of alone in a Column.
-            style: FilledButton.styleFrom(minimumSize: const Size(64, 40)),
+            // to something else in a Row instead of alone in a Column. Also
+            // swaps the theme's default gold-on-ink button for felt-on-gold,
+            // since a gold button would disappear against this gold banner.
+            style: FilledButton.styleFrom(
+              minimumSize: const Size(64, 40),
+              backgroundColor: PilottaColors.felt900,
+              foregroundColor: PilottaColors.gold300,
+            ),
             onPressed: canAnnounce
                 ? controller.announceDeclaration
                 : controller.revealDeclaration,

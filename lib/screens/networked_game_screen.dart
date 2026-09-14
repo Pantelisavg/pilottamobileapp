@@ -10,6 +10,7 @@ import '../settings/sound.dart';
 import '../widgets/bidding_panel.dart';
 import '../widgets/chat_flash_banner.dart';
 import '../widgets/chat_panel.dart';
+import '../widgets/felt_background.dart';
 import '../widgets/table/cheat_sheet_button.dart';
 import '../widgets/table/declaration_panel.dart';
 import '../widgets/table/hand_summary_overlay.dart';
@@ -30,12 +31,14 @@ class NetworkedGameScreen extends StatelessWidget {
     final controller = context.watch<RoomClientController>();
 
     if (!controller.inRoom) {
-      return Scaffold(
-        backgroundColor: const Color(0xFF0B3D2E),
-        body: Center(
-          child: controller.lastError != null
-              ? _ConnectingError(message: controller.lastError!)
-              : const CircularProgressIndicator(color: Colors.amber),
+      return FeltBackground(
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          body: Center(
+            child: controller.lastError != null
+                ? _ConnectingError(message: controller.lastError!)
+                : const CircularProgressIndicator(color: Colors.amber),
+          ),
         ),
       );
     }
@@ -84,55 +87,55 @@ class _LobbyWaitingRoom extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final snapshot = controller.snapshot!;
-    return Scaffold(
-      backgroundColor: const Color(0xFF0B3D2E),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF082A20),
-        foregroundColor: Colors.white,
-        title: const Text('Αίθουσα αναμονής'),
-      ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            children: [
-              const Text('Κωδικός δωματίου',
-                  style: TextStyle(color: Colors.white70)),
-              const SizedBox(height: 6),
-              SelectableText(
-                snapshot.roomCode,
-                style: const TextStyle(
-                  color: Colors.amber,
-                  fontSize: 42,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 8,
+    return FeltBackground(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          title: const Text('Αίθουσα αναμονής'),
+        ),
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              children: [
+                const Text('Κωδικός δωματίου',
+                    style: TextStyle(color: Colors.white70)),
+                const SizedBox(height: 6),
+                SelectableText(
+                  snapshot.roomCode,
+                  style: const TextStyle(
+                    color: Colors.amber,
+                    fontSize: 42,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 8,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                  'Μοιράσου τον κωδικό με φίλους για να μπουν στο δωμάτιο.',
-                  style: TextStyle(color: Colors.white54, fontSize: 12),
-                  textAlign: TextAlign.center),
-              const SizedBox(height: 32),
-              for (final seat in Seat.values)
-                _SeatRow(seat: seat, info: snapshot.seats[seat]!),
-              const Spacer(),
-              if (controller.isHost)
-                FilledButton.icon(
-                  onPressed: controller.start,
-                  icon: const Icon(Icons.play_arrow),
-                  label: const Text('Έναρξη (γέμισμα κενών θέσεων με bot)'),
-                )
-              else
-                const Text('Περιμένουμε τον οικοδεσπότη να ξεκινήσει...',
-                    style: TextStyle(color: Colors.white54)),
-              if (controller.lastError != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 12),
-                  child: Text(controller.lastError!,
-                      style: const TextStyle(color: Colors.redAccent)),
-                ),
-            ],
+                const SizedBox(height: 8),
+                const Text(
+                    'Μοιράσου τον κωδικό με φίλους για να μπουν στο δωμάτιο.',
+                    style: TextStyle(color: Colors.white54, fontSize: 12),
+                    textAlign: TextAlign.center),
+                const SizedBox(height: 32),
+                for (final seat in Seat.values)
+                  _SeatRow(seat: seat, info: snapshot.seats[seat]!),
+                const Spacer(),
+                if (controller.isHost)
+                  FilledButton.icon(
+                    onPressed: controller.start,
+                    icon: const Icon(Icons.play_arrow),
+                    label: const Text('Έναρξη (γέμισμα κενών θέσεων με bot)'),
+                  )
+                else
+                  const Text('Περιμένουμε τον οικοδεσπότη να ξεκινήσει...',
+                      style: TextStyle(color: Colors.white54)),
+                if (controller.lastError != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: Text(controller.lastError!,
+                        style: const TextStyle(color: Colors.redAccent)),
+                  ),
+              ],
+            ),
           ),
         ),
       ),
@@ -185,99 +188,100 @@ class _OnlineTable extends StatelessWidget {
     final me = controller.mySeat!;
 
     return LeaveTableScope(
-      child: Scaffold(
-        backgroundColor: const Color(0xFF0B3D2E),
-        appBar: AppBar(
-          backgroundColor: const Color(0xFF082A20),
-          foregroundColor: Colors.white,
-          title: ScoreHeader(
-            controller: controller,
-            extraTargetSubtitle: 'Δωμάτιο ${snapshot.roomCode}',
-          ),
-          titleSpacing: 12,
-          actions: [
-            const CheatSheetButton(),
-            IconButton(
-              icon: const Icon(Icons.chat_bubble_outline),
-              tooltip: 'Συνομιλία',
-              onPressed: () => showChatPanel(
-                context,
-                listenable: controller,
-                chatLogOf: () => controller.chatLog,
-                viewerSeat: me,
-                onSend: controller.sendChat,
-              ),
+      child: FeltBackground(
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          appBar: AppBar(
+            title: ScoreHeader(
+              controller: controller,
+              extraTargetSubtitle: 'Δωμάτιο ${snapshot.roomCode}',
             ),
-            const LeaveTableButton(),
-          ],
-        ),
-        body: SafeArea(
-          child: Stack(
-            children: [
-              Column(
-                children: [
-                  if (snapshot.banner != null)
-                    Container(
-                      width: double.infinity,
-                      color: Colors.amber.shade800,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 6),
-                      child: Text(snapshot.banner!,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                              color: Colors.white, fontSize: 12)),
-                    ),
-                  Expanded(
-                    child: OvalTableArea(
-                      controller: controller,
-                      opponentSeatBuilder: (seat) {
-                        final info = snapshot.seats[seat]!;
-                        final isActive = controller.seatToAct == seat;
-                        return OpponentSeat(
-                          controller: controller,
-                          seat: seat,
-                          disconnected: !info.isBot && !info.connected,
-                          // A purely cosmetic pace cue — nothing auto-plays if
-                          // it runs out, there is no server-side turn timeout.
-                          timerOverlay:
-                              isActive && !info.isBot && info.connected
-                                  ? TurnTimerRing(
-                                      key: ValueKey(
-                                          '${snapshot.phase.name}|${snapshot.seatToAct?.name}'),
-                                      active: true,
-                                      size: 66,
-                                    )
-                                  : null,
-                        );
-                      },
-                    ),
-                  ),
-                  if (controller.canAnnounceDeclaration ||
-                      controller.canRevealDeclaration)
-                    DeclarationPanel(controller: controller),
-                  // The hand stays visible above the bidding panel — you
-                  // need to see your cards while you decide what to call.
-                  HumanHandPanel(
-                      controller: controller, errorText: controller.lastError),
-                  if (controller.isMyTurnToBid)
-                    BiddingPanel(
-                      auction: controller.auction!,
-                      seat: me,
-                      onCall: (call) {
-                        playTapSound(context.read<AppSettings>());
-                        controller.submitBid(call);
-                      },
-                    ),
-                ],
+            titleSpacing: 12,
+            actions: [
+              const CheatSheetButton(),
+              IconButton(
+                icon: const Icon(Icons.chat_bubble_outline),
+                tooltip: 'Συνομιλία',
+                onPressed: () => showChatPanel(
+                  context,
+                  listenable: controller,
+                  chatLogOf: () => controller.chatLog,
+                  viewerSeat: me,
+                  onSend: controller.sendChat,
+                ),
               ),
-              if (snapshot.phase == RoomPhase.handSummary)
-                HandSummaryOverlay(controller: controller),
-              if (snapshot.phase == RoomPhase.matchOver)
-                MatchOverOverlay(controller: controller),
-              if (controller.status == ConnectionStatus.disconnected)
-                _DisconnectOverlay(controller: controller),
-              ChatFlashBanner(chatLog: controller.chatLog, viewerSeat: me),
+              const LeaveTableButton(),
             ],
+          ),
+          body: SafeArea(
+            child: Stack(
+              children: [
+                Column(
+                  children: [
+                    if (snapshot.banner != null)
+                      Container(
+                        width: double.infinity,
+                        color: Colors.amber.shade800,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
+                        child: Text(snapshot.banner!,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                                color: Colors.white, fontSize: 12)),
+                      ),
+                    Expanded(
+                      child: OvalTableArea(
+                        controller: controller,
+                        opponentSeatBuilder: (seat) {
+                          final info = snapshot.seats[seat]!;
+                          final isActive = controller.seatToAct == seat;
+                          return OpponentSeat(
+                            controller: controller,
+                            seat: seat,
+                            disconnected: !info.isBot && !info.connected,
+                            // A purely cosmetic pace cue — nothing auto-plays if
+                            // it runs out, there is no server-side turn timeout.
+                            timerOverlay:
+                                isActive && !info.isBot && info.connected
+                                    ? TurnTimerRing(
+                                        key: ValueKey(
+                                            '${snapshot.phase.name}|${snapshot.seatToAct?.name}'),
+                                        active: true,
+                                        size: 66,
+                                      )
+                                    : null,
+                          );
+                        },
+                      ),
+                    ),
+                    if (controller.canAnnounceDeclaration ||
+                        controller.canRevealDeclaration)
+                      DeclarationPanel(controller: controller),
+                    // The hand stays visible above the bidding panel — you
+                    // need to see your cards while you decide what to call.
+                    HumanHandPanel(
+                        controller: controller,
+                        errorText: controller.lastError),
+                    if (controller.isMyTurnToBid)
+                      BiddingPanel(
+                        auction: controller.auction!,
+                        seat: me,
+                        onCall: (call) {
+                          playTapSound(context.read<AppSettings>());
+                          controller.submitBid(call);
+                        },
+                      ),
+                  ],
+                ),
+                if (snapshot.phase == RoomPhase.handSummary)
+                  HandSummaryOverlay(controller: controller),
+                if (snapshot.phase == RoomPhase.matchOver)
+                  MatchOverOverlay(controller: controller),
+                if (controller.status == ConnectionStatus.disconnected)
+                  _DisconnectOverlay(controller: controller),
+                ChatFlashBanner(chatLog: controller.chatLog, viewerSeat: me),
+              ],
+            ),
           ),
         ),
       ),

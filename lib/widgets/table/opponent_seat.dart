@@ -3,6 +3,7 @@ import 'package:pilotta_engine/pilotta_engine.dart';
 import 'package:provider/provider.dart';
 
 import '../../settings/app_settings.dart';
+import '../../theme/pilotta_colors.dart';
 import '../player_avatar.dart';
 import '../playing_card_widget.dart';
 import '../seat_layout.dart';
@@ -64,7 +65,8 @@ class OpponentSeat extends StatelessWidget {
               const Padding(
                 padding: EdgeInsets.only(top: 2),
                 child: Text('Δήλωσε — αναμένεται αποκάλυψη',
-                    style: TextStyle(color: Colors.amberAccent, fontSize: 9)),
+                    style:
+                        TextStyle(color: PilottaColors.gold300, fontSize: 9)),
               )
             else if (declState == DeclarationAnnounceState.revealed &&
                 revealedLabel != null)
@@ -72,7 +74,7 @@ class OpponentSeat extends StatelessWidget {
                 padding: const EdgeInsets.only(top: 2),
                 child: Text(revealedLabel,
                     style: const TextStyle(
-                        color: Colors.lightGreenAccent, fontSize: 9)),
+                        color: PilottaColors.success500, fontSize: 9)),
               ),
             const SizedBox(height: 4),
             SizedBox(

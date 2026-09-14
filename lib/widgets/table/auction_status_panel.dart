@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../theme/pilotta_colors.dart';
+import '../../theme/pilotta_spacing.dart';
 import '../seat_layout.dart';
 import '../suit_icon.dart';
 import 'auction_rounds_grid.dart';
@@ -23,8 +25,11 @@ class AuctionStatusPanel extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.black54,
-        borderRadius: BorderRadius.circular(16),
+        color: PilottaColors.felt800.withValues(alpha: 0.93),
+        borderRadius: BorderRadius.circular(PilottaRadius.lg),
+        border:
+            Border.all(color: PilottaColors.gold500.withValues(alpha: 0.35)),
+        boxShadow: PilottaColors.shadowRaised,
       ),
       // SingleChildScrollView clamps to whatever height the Align/Stack
       // above actually has available and scrolls instead of overflowing —
@@ -35,12 +40,12 @@ class AuctionStatusPanel extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Text('Δηλώσεις',
-                style: TextStyle(color: Colors.white70, fontSize: 12)),
+                style: TextStyle(color: PilottaColors.ink200, fontSize: 12)),
             const SizedBox(height: 6),
             if (bid == null)
               const Text('Καμία δήλωση ακόμα',
                   style: TextStyle(
-                      color: Colors.white,
+                      color: PilottaColors.ink50,
                       fontSize: 16,
                       fontWeight: FontWeight.bold))
             else
@@ -49,24 +54,24 @@ class AuctionStatusPanel extends StatelessWidget {
                 children: [
                   Text('${bid.isCapot ? 'Καπό' : bid.value} ',
                       style: const TextStyle(
-                          color: Colors.white,
+                          color: PilottaColors.ink50,
                           fontSize: 16,
                           fontWeight: FontWeight.bold)),
-                  SuitIcon(bid.suit, size: 18, color: Colors.white),
+                  SuitIcon(bid.suit, size: 18, color: PilottaColors.ink50),
                   Text(' — ${seatLabelRelativeTo(bid.seat, me)}',
                       style: const TextStyle(
-                          color: Colors.white,
+                          color: PilottaColors.ink50,
                           fontSize: 16,
                           fontWeight: FontWeight.bold)),
                 ],
               ),
             const SizedBox(height: 6),
             Text('Σειρά: ${seatLabelRelativeTo(auction.seatToAct, me)}',
-                style:
-                    const TextStyle(color: Colors.amberAccent, fontSize: 12)),
+                style: const TextStyle(
+                    color: PilottaColors.gold300, fontSize: 12)),
             if (auction.calls.isNotEmpty) ...[
               const SizedBox(height: 10),
-              const Divider(height: 1, color: Colors.white24),
+              Divider(height: 1, color: PilottaColors.felt600),
               const SizedBox(height: 6),
               SizedBox(
                 width: 240,

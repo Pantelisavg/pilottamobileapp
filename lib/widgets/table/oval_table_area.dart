@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:pilotta_engine/pilotta_engine.dart';
 import 'package:pilotta_protocol/pilotta_protocol.dart';
 
+import '../../theme/pilotta_colors.dart';
 import '../auction_history_dialog.dart';
 import '../seat_layout.dart';
 import 'auction_status_panel.dart';
@@ -36,6 +37,9 @@ class OvalTableArea extends StatelessWidget {
 
     return Stack(
       children: [
+        Positioned.fill(
+          child: CustomPaint(painter: _TableFeltPainter()),
+        ),
         for (final seat in Seat.values)
           if (seat != me)
             Align(
@@ -82,4 +86,39 @@ class OvalTableArea extends StatelessWidget {
       ],
     );
   }
+}
+
+/// The felt oval itself — a soft radial highlight (as if lit from above)
+/// inside a thin gold rim, inset from the full rectangular table area so
+/// it reads as an object sitting on the surface rather than the surface
+/// itself.
+class _TableFeltPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    final ovalRect = rect.deflate(size.shortestSide * 0.04);
+
+    final fillPaint = Paint()
+      ..shader = RadialGradient(
+        center: const Alignment(0, -0.2),
+        radius: 0.9,
+        colors: [PilottaColors.felt700, PilottaColors.felt900],
+      ).createShader(ovalRect);
+    canvas.drawOval(ovalRect, fillPaint);
+
+    final rimPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3
+      ..shader = const LinearGradient(
+        colors: [
+          PilottaColors.gold700,
+          PilottaColors.gold300,
+          PilottaColors.gold700
+        ],
+      ).createShader(ovalRect);
+    canvas.drawOval(ovalRect.deflate(1.5), rimPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _TableFeltPainter oldDelegate) => false;
 }

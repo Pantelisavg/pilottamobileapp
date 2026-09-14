@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:pilotta_engine/pilotta_engine.dart';
 
 import '../settings/card_deck_style.dart';
+import '../theme/pilotta_colors.dart';
 import 'suit_icon.dart';
 
 Color suitColor(Suit suit) =>
@@ -50,9 +51,16 @@ class PlayingCardWidget extends StatelessWidget {
             ? (Matrix4.identity()..translateByDouble(0, -6, 0, 1))
             : Matrix4.identity(),
         decoration: BoxDecoration(
-          color: style == CardDeckStyle.modern
-              ? const Color(0xFFF7F3E8)
-              : Colors.white,
+          // A faint top-left-to-bottom-right gradient rather than a flat
+          // fill, so the face reads as having a touch of glossy thickness
+          // instead of a plain white rectangle.
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: style == CardDeckStyle.modern
+                ? const [Color(0xFFFFFDF7), PilottaColors.cardFace]
+                : [Colors.white, PilottaColors.cardFace],
+          ),
           borderRadius: BorderRadius.circular(width * 0.12),
           border: Border.all(
             color: selectable
@@ -198,7 +206,7 @@ class PlayingCardWidget extends StatelessWidget {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF1B4D3E), Color(0xFF0E2E24)],
+          colors: [PilottaColors.felt600, PilottaColors.felt900],
         ),
       ),
       child: Center(
@@ -207,7 +215,8 @@ class PlayingCardWidget extends StatelessWidget {
           height: width * 0.55,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            border: Border.all(color: Colors.white24, width: 2),
+            border: Border.all(
+                color: PilottaColors.gold300.withValues(alpha: 0.45), width: 2),
           ),
         ),
       ),
