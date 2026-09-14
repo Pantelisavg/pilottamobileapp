@@ -7,6 +7,7 @@ import '../fanned_hand.dart';
 import '../hand_sort.dart';
 import '../illegal_reason.dart';
 import 'game_table_data.dart';
+import 'turn_guidance_banner.dart';
 
 /// The viewer's own hand, fanned out with legal plays highlighted — shared
 /// replacement for local's `_HumanHand` and online's `_OnlineHumanHand`.
@@ -47,6 +48,7 @@ class HumanHandPanel extends StatelessWidget {
                   style:
                       const TextStyle(color: Colors.redAccent, fontSize: 12)),
             ),
+          TurnGuidanceBanner(controller: controller),
           FannedHand(
             cards: sorted,
             legal: legal,
