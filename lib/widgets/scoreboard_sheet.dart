@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:pilotta_engine/pilotta_engine.dart';
 
+import 'seat_layout.dart';
 import 'suit_icon.dart';
 
 /// One row of the ledger-style scoreboard: a single hand's contract and its
@@ -22,6 +23,13 @@ class ScoreRow {
   final int declarationPointsMine;
   final int declarationPointsTheirs;
 
+  /// Raw trick-taking points this team won this hand (before the contract
+  /// bonus/multiplier is applied), in the same /10 units as every other
+  /// number on this row — 0 if the team took no tricks worth counting
+  /// (e.g. a failed contract awards the whole pool to the defence).
+  final int trickPointsMine;
+  final int trickPointsTheirs;
+
   const ScoreRow({
     required this.index,
     required this.trumpSuit,
@@ -33,7 +41,47 @@ class ScoreRow {
     required this.roundedTheirs,
     this.declarationPointsMine = 0,
     this.declarationPointsTheirs = 0,
+    this.trickPointsMine = 0,
+    this.trickPointsTheirs = 0,
   });
+}
+
+/// Builds the scoreboard's rows from [history], oriented to [viewerSeat]'s
+/// own team perspective — the one place this shaping happens, shared by
+/// local and networked play alike now that [HandResult] means the same
+/// thing in both (see `GameTableData.matchHistory`).
+List<ScoreRow> buildScoreRows(List<HandResult> history, Seat viewerSeat) {
+  final ourTeam = viewerSeat.team;
+  int declarationPointsOf(HandResult r, Team team) {
+    final d = r.declarations;
+    var points = d.winningTeam == team ? d.winningTeamPoints : 0;
+    if (d.beloteSeat?.team == team) points += kBelotePoints;
+    return points ~/ 10;
+  }
+
+  return [
+    for (var i = 0; i < history.length; i++)
+      ScoreRow(
+        index: i + 1,
+        trumpSuit: history[i].contract.trumpSuit,
+        isCapot: history[i].contract.isCapot,
+        biddingValue: history[i].contract.value,
+        biddingSeatLabel:
+            seatLabelRelativeTo(history[i].contract.biddingSeat, viewerSeat),
+        contractMade: history[i].contractMade,
+        roundedMine: ourTeam == Team.northSouth
+            ? history[i].rounded.northSouth
+            : history[i].rounded.eastWest,
+        roundedTheirs: ourTeam == Team.northSouth
+            ? history[i].rounded.eastWest
+            : history[i].rounded.northSouth,
+        declarationPointsMine: declarationPointsOf(history[i], ourTeam),
+        declarationPointsTheirs:
+            declarationPointsOf(history[i], ourTeam.opponent),
+        trickPointsMine: history[i].trickPoints[ourTeam]! ~/ 10,
+        trickPointsTheirs: history[i].trickPoints[ourTeam.opponent]! ~/ 10,
+      ),
+  ];
 }
 
 /// A scrollable ledger of every hand played so far this match, laid out like
@@ -190,6 +238,7 @@ class _Ledger extends StatelessWidget {
               Expanded(
                 child: _TeamCell(
                   declarationPoints: r.declarationPointsMine,
+                  trickPoints: r.trickPointsMine,
                   runningTotal: runningMine[i],
                   changedThisHand: r.roundedMine != 0,
                 ),
@@ -201,6 +250,7 @@ class _Ledger extends StatelessWidget {
               Expanded(
                 child: _TeamCell(
                   declarationPoints: r.declarationPointsTheirs,
+                  trickPoints: r.trickPointsTheirs,
                   runningTotal: runningTheirs[i],
                   changedThisHand: r.roundedTheirs != 0,
                 ),
@@ -218,11 +268,13 @@ class _Ledger extends StatelessWidget {
 
 class _TeamCell extends StatelessWidget {
   final int declarationPoints;
+  final int trickPoints;
   final int runningTotal;
   final bool changedThisHand;
 
   const _TeamCell({
     required this.declarationPoints,
+    required this.trickPoints,
     required this.runningTotal,
     required this.changedThisHand,
   });
@@ -237,6 +289,13 @@ class _TeamCell extends StatelessWidget {
             declarationPoints > 0 ? '$declarationPoints' : '–',
             textAlign: TextAlign.center,
             style: const TextStyle(color: Colors.white54, fontSize: 13),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            trickPoints > 0 ? '$trickPoints' : '–',
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.white70, fontSize: 13),
           ),
         ),
         Expanded(

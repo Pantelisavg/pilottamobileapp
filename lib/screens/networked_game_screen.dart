@@ -26,48 +26,6 @@ import '../widgets/table/oval_geometry.dart';
 import '../widgets/suit_icon.dart';
 import '../widgets/turn_timer_ring.dart';
 
-List<ScoreRow> _buildOnlineScoreRows(
-    List<Map<String, dynamic>> history, Seat viewerSeat) {
-  final myTeamKey =
-      viewerSeat.team == Team.northSouth ? 'northSouth' : 'eastWest';
-  final theirTeamKey = myTeamKey == 'northSouth' ? 'eastWest' : 'northSouth';
-
-  int declarationPointsOf(Map<String, dynamic> entry, String teamKey) {
-    final d = entry['declarations'] as Map<String, dynamic>;
-    var points =
-        d['winningTeam'] == teamKey ? d['winningTeamPoints'] as int : 0;
-    final beloteSeat = d['beloteSeat'] as String?;
-    if (beloteSeat != null &&
-        Seat.values.byName(beloteSeat).team.name == teamKey) {
-      points += kBelotePoints;
-    }
-    return points ~/ 10;
-  }
-
-  return [
-    for (var i = 0; i < history.length; i++)
-      () {
-        final entry = history[i];
-        final contract = entry['contract'] as Map<String, dynamic>;
-        final rounded = entry['rounded'] as Map<String, dynamic>;
-        return ScoreRow(
-          index: i + 1,
-          trumpSuit: Suit.values.byName(contract['trumpSuit'] as String),
-          isCapot: contract['isCapot'] as bool,
-          biddingValue: contract['value'] as int,
-          biddingSeatLabel: seatLabelRelativeTo(
-              Seat.values.byName(contract['biddingSeat'] as String),
-              viewerSeat),
-          contractMade: entry['contractMade'] as bool,
-          roundedMine: rounded[myTeamKey] as int,
-          roundedTheirs: rounded[theirTeamKey] as int,
-          declarationPointsMine: declarationPointsOf(entry, myTeamKey),
-          declarationPointsTheirs: declarationPointsOf(entry, theirTeamKey),
-        );
-      }(),
-  ];
-}
-
 class NetworkedGameScreen extends StatelessWidget {
   const NetworkedGameScreen({super.key});
 
@@ -317,14 +275,13 @@ class _OnlineScoreHeader extends StatelessWidget {
         InkWell(
           onTap: () => showScoreboardSheet(
             context,
-            rows: _buildOnlineScoreRows(
-                snapshot.matchHistory, controller.mySeat!),
+            rows: buildScoreRows(controller.matchHistory, controller.mySeat!),
             totalMine: snapshot.totals[myTeamKey]!,
             totalTheirs: snapshot.totals[theirTeamKey]!,
             targetScore: snapshot.targetScore,
             onRowTap: (i) => showHandReplayDialog(
               context,
-              result: handResultFromJson(snapshot.matchHistory[i]),
+              result: controller.matchHistory[i],
               viewerSeat: controller.mySeat!,
               handNumber: i + 1,
             ),

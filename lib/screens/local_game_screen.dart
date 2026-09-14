@@ -24,38 +24,6 @@ import '../widgets/seat_layout.dart';
 import '../widgets/suit_icon.dart';
 import '../widgets/table/oval_geometry.dart';
 
-List<ScoreRow> _buildLocalScoreRows(List<HandResult> history, Seat viewerSeat) {
-  final ourTeam = viewerSeat.team;
-  int declarationPointsOf(HandResult r, Team team) {
-    final d = r.declarations;
-    var points = d.winningTeam == team ? d.winningTeamPoints : 0;
-    if (d.beloteSeat?.team == team) points += kBelotePoints;
-    return points ~/ 10;
-  }
-
-  return [
-    for (var i = 0; i < history.length; i++)
-      ScoreRow(
-        index: i + 1,
-        trumpSuit: history[i].contract.trumpSuit,
-        isCapot: history[i].contract.isCapot,
-        biddingValue: history[i].contract.value,
-        biddingSeatLabel:
-            seatLabelRelativeTo(history[i].contract.biddingSeat, viewerSeat),
-        contractMade: history[i].contractMade,
-        roundedMine: ourTeam == Team.northSouth
-            ? history[i].rounded.northSouth
-            : history[i].rounded.eastWest,
-        roundedTheirs: ourTeam == Team.northSouth
-            ? history[i].rounded.eastWest
-            : history[i].rounded.northSouth,
-        declarationPointsMine: declarationPointsOf(history[i], ourTeam),
-        declarationPointsTheirs:
-            declarationPointsOf(history[i], ourTeam.opponent),
-      ),
-  ];
-}
-
 class LocalGameScreen extends StatelessWidget {
   /// Set for a fresh match; null when [resumeFrom] is used instead.
   final int? targetScore;
@@ -179,7 +147,7 @@ class _ScoreHeader extends StatelessWidget {
         InkWell(
           onTap: () => showScoreboardSheet(
             context,
-            rows: _buildLocalScoreRows(board.history, controller.humanSeat),
+            rows: buildScoreRows(board.history, controller.humanSeat),
             totalMine: board.totals[ourTeam]!,
             totalTheirs: board.totals[ourTeam.opponent]!,
             targetScore: board.targetScore,
