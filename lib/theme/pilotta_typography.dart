@@ -40,10 +40,16 @@ abstract final class PilottaTypography {
     color: PilottaColors.ink50,
   );
 
-  /// Button labels, list item titles.
+  /// Button labels, list item titles. w700 rather than w600 deliberately —
+  /// the bundled Roboto only ships discrete weights 400/500/700/900 (see
+  /// pubspec.yaml), and requesting an unregistered weight like 600 for a
+  /// multi-file (non-variable) family isn't guaranteed to fall back onto a
+  /// real glyph outline the way it does for a single-file variable font;
+  /// it rendered as tofu boxes in testing. Every Roboto style in this
+  /// class now requests only a weight that has an exact matching asset.
   static const label = TextStyle(
     fontSize: 15,
-    fontWeight: FontWeight.w600,
+    fontWeight: FontWeight.w700,
     letterSpacing: 0.2,
     color: PilottaColors.ink50,
   );
@@ -73,10 +79,11 @@ abstract final class PilottaTypography {
     color: PilottaColors.ink200,
   );
 
-  /// Big numeric readouts (score, bid value).
+  /// Big numeric readouts (score, bid value). w900 rather than w800 for
+  /// the same exact-registered-weight reason as [label] above.
   static const numeric = TextStyle(
     fontSize: 28,
-    fontWeight: FontWeight.w800,
+    fontWeight: FontWeight.w900,
     color: PilottaColors.ink50,
     height: 1,
   );
