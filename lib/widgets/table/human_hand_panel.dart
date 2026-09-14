@@ -7,6 +7,7 @@ import '../fanned_hand.dart';
 import '../hand_sort.dart';
 import '../illegal_reason.dart';
 import 'game_table_data.dart';
+import 'hand_sort_toggle_button.dart';
 import 'throw_all_button.dart';
 import 'turn_guidance_banner.dart';
 
@@ -39,30 +40,36 @@ class HumanHandPanel extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
       color: const Color(0xFF082A20),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+      child: Stack(
         children: [
-          if (errorText != null)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 6),
-              child: Text(errorText!,
-                  style:
-                      const TextStyle(color: Colors.redAccent, fontSize: 12)),
-            ),
-          TurnGuidanceBanner(controller: controller),
-          ThrowAllButton(controller: controller),
-          FannedHand(
-            cards: sorted,
-            legal: legal,
-            isMyTurn: isMyTurn,
-            cardScale: cardScale,
-            reasonFor: (card) =>
-                trick != null ? illegalPlayReason(trick, cards, card) : null,
-            onTap: (card) {
-              playTapSound(context.read<AppSettings>());
-              controller.playCard(card);
-            },
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (errorText != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Text(errorText!,
+                      style: const TextStyle(
+                          color: Colors.redAccent, fontSize: 12)),
+                ),
+              TurnGuidanceBanner(controller: controller),
+              ThrowAllButton(controller: controller),
+              FannedHand(
+                cards: sorted,
+                legal: legal,
+                isMyTurn: isMyTurn,
+                cardScale: cardScale,
+                reasonFor: (card) => trick != null
+                    ? illegalPlayReason(trick, cards, card)
+                    : null,
+                onTap: (card) {
+                  playTapSound(context.read<AppSettings>());
+                  controller.playCard(card);
+                },
+              ),
+            ],
           ),
+          const Positioned(top: 0, right: 0, child: HandSortToggleButton()),
         ],
       ),
     );
