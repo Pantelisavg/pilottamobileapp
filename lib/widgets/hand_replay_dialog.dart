@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:pilotta_engine/pilotta_engine.dart';
 
+import '../theme/pilotta_colors.dart';
 import 'playing_card_widget.dart';
 import 'seat_layout.dart';
 import 'suit_icon.dart';
+import 'table/oval_geometry.dart';
 
 /// Opens a step-through replay of every trick in [result] — one full
 /// completed hand from the scoreboard's history, not just the most recent
@@ -51,7 +53,7 @@ class _HandReplayDialogState extends State<_HandReplayDialog> {
     final contract = result.contract;
 
     return Dialog(
-      backgroundColor: const Color(0xFF0E3428),
+      backgroundColor: PilottaColors.felt800,
       insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 32),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 360),
@@ -91,8 +93,8 @@ class _HandReplayDialogState extends State<_HandReplayDialog> {
                   children: [
                     for (final entry in trick.played)
                       Align(
-                        alignment: seatAlignmentRelativeTo(
-                            entry.seat, widget.viewerSeat),
+                        alignment:
+                            ovalSeatAlignment(entry.seat, widget.viewerSeat),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [

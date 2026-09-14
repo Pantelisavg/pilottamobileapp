@@ -22,6 +22,7 @@ import '../widgets/player_avatar.dart';
 import '../widgets/playing_card_widget.dart';
 import '../widgets/scoreboard_sheet.dart';
 import '../widgets/seat_layout.dart';
+import '../widgets/table/oval_geometry.dart';
 import '../widgets/suit_icon.dart';
 import '../widgets/turn_timer_ring.dart';
 
@@ -384,7 +385,7 @@ class _OnlineTableArea extends StatelessWidget {
         for (final seat in Seat.values)
           if (seat != me)
             Align(
-              alignment: seatAlignmentRelativeTo(seat, me),
+              alignment: ovalSeatAlignment(seat, me),
               child: _OnlineOpponentSeat(controller: controller, seat: seat),
             ),
         Center(child: _OnlineTrickArea(controller: controller)),
@@ -534,7 +535,7 @@ class _OnlineTrickArea extends StatelessWidget {
         children: [
           for (final entry in trick)
             Align(
-              alignment: seatAlignmentRelativeTo(
+              alignment: ovalSeatAlignment(
                   Seat.values.byName(entry['seat'] as String),
                   controller.mySeat!),
               child: PlayingCardWidget(

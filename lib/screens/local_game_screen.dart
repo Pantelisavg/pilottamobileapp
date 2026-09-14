@@ -22,6 +22,7 @@ import '../widgets/playing_card_widget.dart';
 import '../widgets/scoreboard_sheet.dart';
 import '../widgets/seat_layout.dart';
 import '../widgets/suit_icon.dart';
+import '../widgets/table/oval_geometry.dart';
 
 List<ScoreRow> _buildLocalScoreRows(List<HandResult> history, Seat viewerSeat) {
   final ourTeam = viewerSeat.team;
@@ -250,7 +251,7 @@ class _TableArea extends StatelessWidget {
         for (final seat in Seat.values)
           if (seat != controller.humanSeat)
             Align(
-              alignment: seatAlignmentRelativeTo(seat, controller.humanSeat),
+              alignment: ovalSeatAlignment(seat, controller.humanSeat),
               child: _OpponentSeat(controller: controller, seat: seat),
             ),
         Center(child: _TrickArea(controller: controller)),
@@ -383,7 +384,7 @@ class _TrickArea extends StatelessWidget {
           for (final seat in Seat.values)
             if (played[seat] != null)
               Align(
-                alignment: seatAlignmentRelativeTo(seat, controller.humanSeat),
+                alignment: ovalSeatAlignment(seat, controller.humanSeat),
                 child: PlayingCardWidget(
                     card: played[seat], width: 68 * cardScale),
               ),
