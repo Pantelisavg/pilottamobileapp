@@ -89,6 +89,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // The app is landscape-locked, so a phone's short dimension is height,
+    // not width — stacking everything (wordmark, name field, target score,
+    // every mode tile) in one column is what forced scrolling before. A
+    // side-by-side split uses the width landscape actually has to spare;
+    // the outer SingleChildScrollView stays only as a safety net for
+    // extreme accessibility text-scale settings, not the normal path.
+    final compact = MediaQuery.sizeOf(context).height < 380;
+
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: FeltBackground(
@@ -97,63 +105,100 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               Center(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(
+                  padding: EdgeInsets.symmetric(
                       horizontal: PilottaSpacing.lg,
-                      vertical: PilottaSpacing.xl),
+                      vertical:
+                          compact ? PilottaSpacing.xs : PilottaSpacing.sm),
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 360),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
+                    constraints: const BoxConstraints(maxWidth: 760),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        const _Wordmark(),
-                        const SizedBox(height: PilottaSpacing.xxl),
-                        const _PlayerNameField(),
-                        const SizedBox(height: PilottaSpacing.lg),
-                        _TargetScoreSelector(
-                          value: _targetScore,
-                          onChanged: (v) => setState(() => _targetScore = v),
-                        ),
-                        const SizedBox(height: PilottaSpacing.xl),
-                        if (_hasSave) ...[
-                          _ModeMenuTile(
-                            mode: GameModeAccent.localBots,
-                            title: 'Συνέχεια παιχνιδιού',
-                            subtitle:
-                                'Συνέχισε το παιχνίδι με bots από εκεί που έμεινες',
-                            onTap: _continueGame,
+                        Expanded(
+                          flex: 4,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _Wordmark(compact: compact),
+                              SizedBox(
+                                  height: compact
+                                      ? PilottaSpacing.sm
+                                      : PilottaSpacing.md),
+                              const _PlayerNameField(),
+                              SizedBox(
+                                  height: compact
+                                      ? PilottaSpacing.xs
+                                      : PilottaSpacing.sm),
+                              _TargetScoreSelector(
+                                value: _targetScore,
+                                onChanged: (v) =>
+                                    setState(() => _targetScore = v),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: PilottaSpacing.sm),
-                        ],
-                        _ModeMenuTile(
-                          mode: GameModeAccent.localBots,
-                          title: 'Παιχνίδι με Bots',
-                          subtitle: 'Τοπικά, χωρίς σύνδεση — παίζεις αμέσως',
-                          onTap: _startFreshLocalGame,
                         ),
-                        const SizedBox(height: PilottaSpacing.sm),
-                        _ModeMenuTile(
-                          mode: GameModeAccent.online,
-                          title: 'Online Παιχνίδι',
-                          subtitle: 'Δωμάτιο με κωδικό, παίκτες από παντού',
-                          onTap: () =>
-                              Navigator.of(context).push(MaterialPageRoute(
-                            builder: (_) => const OnlineLobbyScreen(),
-                          )),
-                        ),
-                        // Nearby Connections (the Bluetooth/local-network
-                        // backend) is an Android-only plugin.
-                        if (!kIsWeb && Platform.isAndroid) ...[
-                          const SizedBox(height: PilottaSpacing.sm),
-                          _ModeMenuTile(
-                            mode: GameModeAccent.bluetooth,
-                            title: 'Bluetooth / Τοπικό δίκτυο',
-                            subtitle: 'Χωρίς internet — παίκτες κοντά σου',
-                            onTap: () =>
-                                Navigator.of(context).push(MaterialPageRoute(
-                              builder: (_) => const BluetoothLobbyScreen(),
-                            )),
+                        const SizedBox(width: PilottaSpacing.lg),
+                        Expanded(
+                          flex: 5,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (_hasSave) ...[
+                                _ModeMenuTile(
+                                  mode: GameModeAccent.localBots,
+                                  title: 'Συνέχεια παιχνιδιού',
+                                  subtitle: 'Συνέχισε το παιχνίδι με bots',
+                                  onTap: _continueGame,
+                                  compact: compact,
+                                ),
+                                SizedBox(
+                                    height: compact
+                                        ? PilottaSpacing.xxs
+                                        : PilottaSpacing.xs),
+                              ],
+                              _ModeMenuTile(
+                                mode: GameModeAccent.localBots,
+                                title: 'Παιχνίδι με Bots',
+                                subtitle: 'Τοπικά, χωρίς σύνδεση',
+                                onTap: _startFreshLocalGame,
+                                compact: compact,
+                              ),
+                              SizedBox(
+                                  height: compact
+                                      ? PilottaSpacing.xxs
+                                      : PilottaSpacing.xs),
+                              _ModeMenuTile(
+                                mode: GameModeAccent.online,
+                                title: 'Online Παιχνίδι',
+                                subtitle: 'Δωμάτιο με κωδικό',
+                                onTap: () => Navigator.of(context)
+                                    .push(MaterialPageRoute(
+                                  builder: (_) => const OnlineLobbyScreen(),
+                                )),
+                                compact: compact,
+                              ),
+                              // Nearby Connections (the Bluetooth/local-network
+                              // backend) is an Android-only plugin.
+                              if (!kIsWeb && Platform.isAndroid) ...[
+                                SizedBox(
+                                    height: compact
+                                        ? PilottaSpacing.xxs
+                                        : PilottaSpacing.xs),
+                                _ModeMenuTile(
+                                  mode: GameModeAccent.bluetooth,
+                                  title: 'Bluetooth / Τοπικό',
+                                  subtitle: 'Χωρίς internet',
+                                  onTap: () => Navigator.of(context)
+                                      .push(MaterialPageRoute(
+                                    builder: (_) =>
+                                        const BluetoothLobbyScreen(),
+                                  )),
+                                  compact: compact,
+                                ),
+                              ],
+                            ],
                           ),
-                        ],
+                        ),
                       ],
                     ),
                   ),
@@ -179,23 +224,26 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 class _Wordmark extends StatelessWidget {
-  const _Wordmark();
+  final bool compact;
+  const _Wordmark({required this.compact});
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const Text('ΠΙΛΟΤΤΑ', style: PilottaTypography.display),
-        const SizedBox(height: PilottaSpacing.xs),
+        Text('ΠΙΛΟΤΤΑ',
+            style: PilottaTypography.display
+                .copyWith(fontSize: compact ? 30 : 38)),
+        SizedBox(height: compact ? 2 : PilottaSpacing.xxs),
         Container(
-          width: 56,
+          width: 44,
           height: 3,
           decoration: BoxDecoration(
             color: PilottaColors.gold500,
             borderRadius: BorderRadius.circular(2),
           ),
         ),
-        const SizedBox(height: PilottaSpacing.xs),
+        SizedBox(height: compact ? 2 : PilottaSpacing.xxs),
         Text(
           'ΠΑΛΑΡΙΣΤΗ',
           style: PilottaTypography.caption
@@ -239,6 +287,7 @@ class _PlayerNameFieldState extends State<_PlayerNameField> {
       maxLength: 20,
       style: const TextStyle(color: PilottaColors.ink50),
       decoration: InputDecoration(
+        isDense: true,
         labelText: 'Το όνομά σου',
         labelStyle: const TextStyle(color: PilottaColors.ink400),
         counterText: '',
@@ -267,12 +316,12 @@ class _TargetScoreSelector extends StatelessWidget {
     return Column(
       children: [
         Text('ΠΟΝΤΟΙ ΝΙΚΗΣ', style: PilottaTypography.caption),
-        const SizedBox(height: PilottaSpacing.xs),
+        const SizedBox(height: PilottaSpacing.xxs),
         Wrap(
           alignment: WrapAlignment.center,
           crossAxisAlignment: WrapCrossAlignment.center,
           spacing: PilottaSpacing.xs,
-          runSpacing: PilottaSpacing.xs,
+          runSpacing: PilottaSpacing.xxs,
           children: [
             SegmentedButton<int>(
               segments: [
@@ -282,6 +331,10 @@ class _TargetScoreSelector extends StatelessWidget {
               selected: {value},
               onSelectionChanged: (s) => onChanged(s.first),
               showSelectedIcon: false,
+              style: const ButtonStyle(
+                visualDensity: VisualDensity.compact,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
             ),
             OutlinedButton(
               onPressed: () async {
@@ -295,6 +348,8 @@ class _TargetScoreSelector extends StatelessWidget {
                 if (result != null) onChanged(result);
               },
               style: OutlinedButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 foregroundColor:
                     isCustom ? PilottaColors.ink900 : PilottaColors.ink200,
                 backgroundColor: isCustom ? PilottaColors.gold500 : null,
@@ -323,55 +378,61 @@ class _ModeMenuTile extends StatelessWidget {
   final String title;
   final String subtitle;
   final VoidCallback onTap;
+  final bool compact;
 
   const _ModeMenuTile({
     required this.mode,
     required this.title,
     required this.subtitle,
     required this.onTap,
+    required this.compact,
   });
 
   @override
   Widget build(BuildContext context) {
+    final iconSize = compact ? 30.0 : 36.0;
     return PressableScale(
       child: FeltPanel(
         onTap: onTap,
-        padding: const EdgeInsets.symmetric(
-            horizontal: PilottaSpacing.md, vertical: PilottaSpacing.sm + 4),
+        padding: EdgeInsets.symmetric(
+            horizontal: PilottaSpacing.sm,
+            vertical: compact ? PilottaSpacing.xxs : PilottaSpacing.xs),
+        radius: 14,
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Container(
-              width: 44,
-              height: 44,
+              width: iconSize,
+              height: iconSize,
               decoration: BoxDecoration(
                 color: mode.color.withValues(alpha: 0.18),
                 shape: BoxShape.circle,
               ),
-              child: Icon(mode.icon, color: mode.color, size: 22),
+              child: Icon(mode.icon, color: mode.color, size: iconSize * 0.52),
             ),
-            const SizedBox(width: PilottaSpacing.sm),
+            const SizedBox(width: PilottaSpacing.xs),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  ModeBadge(mode: mode, dense: true),
-                  const SizedBox(height: PilottaSpacing.xxs),
                   Text(title,
-                      style: PilottaTypography.title,
+                      style: PilottaTypography.title
+                          .copyWith(fontSize: compact ? 14 : 16),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis),
-                  const SizedBox(height: 2),
                   Text(subtitle,
-                      style: PilottaTypography.bodyMuted,
-                      maxLines: 2,
+                      style: PilottaTypography.bodyMuted
+                          .copyWith(fontSize: compact ? 11 : 12, height: 1.1),
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis),
                 ],
               ),
             ),
-            const SizedBox(width: PilottaSpacing.xs),
-            const Icon(Icons.chevron_right, color: PilottaColors.ink400),
+            ModeBadge(mode: mode, dense: true),
+            const SizedBox(width: PilottaSpacing.xxs),
+            Icon(Icons.chevron_right,
+                color: PilottaColors.ink400, size: compact ? 18 : 20),
           ],
         ),
       ),

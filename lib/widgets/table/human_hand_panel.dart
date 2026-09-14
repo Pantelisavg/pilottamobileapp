@@ -35,11 +35,17 @@ class HumanHandPanel extends StatelessWidget {
     final isMyTurn = controller.isViewerTurnToPlay;
     final trick = controller.currentTrick;
     final settings = context.watch<AppSettings>();
-    final cardScale = settings.cardScale;
     final sorted = sortedForHand(cards, ascending: settings.handAscending);
 
+    // Landscape-locked app: height is the scarce dimension, so this panel
+    // (and the bidding panel below it, when shown) trims itself further on
+    // a short-height device rather than risking a vertical overflow — a
+    // small further shrink to the card size buys back real pixels here.
+    final compact = MediaQuery.sizeOf(context).height < 380;
+    final cardScale = settings.cardScale * (compact ? 0.8 : 1.0);
+
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+      padding: EdgeInsets.symmetric(vertical: compact ? 4 : 8, horizontal: 8),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           begin: Alignment.topCenter,

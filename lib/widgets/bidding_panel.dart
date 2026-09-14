@@ -10,13 +10,16 @@ import 'suit_icon.dart';
 /// A compact pill button style for the auction's call buttons (bid,
 /// Capot, double/redouble, pass) — the app theme's default [FilledButton]/
 /// [OutlinedButton] sizing (a 56px-tall full CTA) is meant for primary
-/// screen actions like "Play"/"Join room", and reads as an oversized bar
-/// here next to the compact suit chips above it.
-ButtonStyle _compactCallButton({Color? background}) => FilledButton.styleFrom(
+/// screen actions like "Play"/"Join room". This app is landscape-locked,
+/// so height (not width) is the scarce dimension here; [compact] shaves a
+/// little further for short-height devices.
+ButtonStyle _compactCallButton({Color? background, required bool compact}) =>
+    FilledButton.styleFrom(
       backgroundColor: background,
-      minimumSize: const Size(0, 36),
-      padding: const EdgeInsets.symmetric(horizontal: PilottaSpacing.sm + 2),
-      textStyle: PilottaTypography.label.copyWith(fontSize: 13),
+      minimumSize: Size(0, compact ? 25 : 34),
+      padding: EdgeInsets.symmetric(
+          horizontal: PilottaSpacing.sm, vertical: compact ? 1 : 4),
+      textStyle: PilottaTypography.label.copyWith(fontSize: compact ? 11 : 13),
       shape: const StadiumBorder(),
     );
 
@@ -62,6 +65,42 @@ class _BiddingPanelState extends State<BiddingPanel> {
         widget.auction.multiplier == ContractMultiplier.doubled;
   }
 
+  Widget _stepButton(
+      {required IconData icon,
+      required bool enabled,
+      required VoidCallback onPressed,
+      required bool compact}) {
+    final size = compact ? 22.0 : 30.0;
+    return IconButton(
+      onPressed: enabled ? onPressed : null,
+      icon: Icon(icon),
+      color: Colors.white,
+      iconSize: compact ? 14 : 18,
+      visualDensity: VisualDensity.compact,
+      padding: EdgeInsets.zero,
+      constraints: BoxConstraints(minWidth: size, minHeight: size),
+    );
+  }
+
+  Widget _suitChip(Suit suit, bool compact) {
+    final selected = _suit == suit;
+    return GestureDetector(
+      onTap: () => setState(() => _suit = suit),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        padding: EdgeInsets.symmetric(
+            horizontal: compact ? 7 : 10, vertical: compact ? 2 : 5),
+        decoration: BoxDecoration(
+          color: selected ? Colors.amber : Colors.white10,
+          borderRadius: BorderRadius.circular(PilottaRadius.pill),
+        ),
+        child: SuitIcon(suit,
+            size: compact ? 13 : 18,
+            color: selected ? suitColor(suit) : Colors.white),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final minValue = _minimumValue();
@@ -76,8 +115,13 @@ class _BiddingPanelState extends State<BiddingPanel> {
     final canDecrement = canBidAtAll && value > minValue;
     final canCallCapot = !auctionLocked && !(currentBid?.isCapot ?? false);
 
+    // The app is landscape-locked, so height (not width) is what a phone
+    // is actually short on here — a genuinely short-height device gets an
+    // extra notch of compactness rather than risking an overflow.
+    final compact = MediaQuery.sizeOf(context).height < 380;
+
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+      padding: EdgeInsets.fromLTRB(12, compact ? 4 : 8, 12, compact ? 5 : 10),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           begin: Alignment.topCenter,
@@ -94,93 +138,83 @@ class _BiddingPanelState extends State<BiddingPanel> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('Η δήλωσή σου', style: PilottaTypography.title),
-          const SizedBox(height: 8),
           if (!canBidAtAll)
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
+              padding: EdgeInsets.symmetric(vertical: compact ? 4 : 6),
               child: Text(
                   auctionLocked
                       ? 'Η δήλωση έχει κλειδώσει'
                       : 'Έφτασε στο ανώτατο όριο (${kMaxBidValue ~/ 10})',
-                  style: const TextStyle(color: Colors.white54, fontSize: 13)),
+                  style: TextStyle(
+                      color: Colors.white54, fontSize: compact ? 12 : 13)),
             )
           else ...[
-            // Shown in the usual colloquial shorthand (8 to 80, for an
-            // actual 80-800) — the same tens convention the scoreboard
-            // uses for its running totals.
-            Text('${value ~/ 10}',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 34,
-                    fontWeight: FontWeight.bold)),
-            // A slider so reaching a far-off value (e.g. jumping straight
-            // to 40) doesn't mean tapping "+" dozens of times — drag for a
-            // big jump, then fine-tune with the +/- buttons if needed.
+            // Value, slider and suit selector all share one row instead of
+            // stacking — landscape has width to spare, unlike height.
             Row(
               children: [
-                IconButton(
-                  onPressed: canDecrement
-                      ? () => setState(() => _value = value - kBidIncrement)
-                      : null,
-                  icon: const Icon(Icons.remove_circle_outline),
-                  color: Colors.white,
+                _stepButton(
+                  icon: Icons.remove_circle_outline,
+                  enabled: canDecrement,
+                  onPressed: () =>
+                      setState(() => _value = value - kBidIncrement),
+                  compact: compact,
+                ),
+                SizedBox(
+                  width: compact ? 26 : 32,
+                  child: Text('${value ~/ 10}',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: compact ? 18 : 22,
+                          fontWeight: FontWeight.bold)),
                 ),
                 Expanded(
-                  child: SliderTheme(
-                    data: SliderTheme.of(context).copyWith(
-                      activeTrackColor: Colors.amber,
-                      thumbColor: Colors.amber,
-                      inactiveTrackColor: Colors.white24,
-                      valueIndicatorColor: Colors.amber.shade700,
-                    ),
-                    child: Slider(
-                      min: minValue.toDouble(),
-                      max: kMaxBidValue.toDouble(),
-                      divisions: (kMaxBidValue - minValue) ~/ kBidIncrement,
-                      value: value.toDouble(),
-                      label: '${value ~/ 10}',
-                      onChanged: (v) => setState(() => _value = v.round()),
+                  child: SizedBox(
+                    height: compact ? 22 : 30,
+                    child: SliderTheme(
+                      data: SliderTheme.of(context).copyWith(
+                        activeTrackColor: Colors.amber,
+                        thumbColor: Colors.amber,
+                        inactiveTrackColor: Colors.white24,
+                        valueIndicatorColor: Colors.amber.shade700,
+                        trackHeight: compact ? 2 : 3,
+                        overlayShape: SliderComponentShape.noOverlay,
+                      ),
+                      child: Slider(
+                        min: minValue.toDouble(),
+                        max: kMaxBidValue.toDouble(),
+                        divisions: (kMaxBidValue - minValue) ~/ kBidIncrement,
+                        value: value.toDouble(),
+                        label: '${value ~/ 10}',
+                        onChanged: (v) => setState(() => _value = v.round()),
+                      ),
                     ),
                   ),
                 ),
-                IconButton(
-                  onPressed: canIncrement
-                      ? () => setState(() => _value = value + kBidIncrement)
-                      : null,
-                  icon: const Icon(Icons.add_circle_outline),
-                  color: Colors.white,
+                _stepButton(
+                  icon: Icons.add_circle_outline,
+                  enabled: canIncrement,
+                  onPressed: () =>
+                      setState(() => _value = value + kBidIncrement),
+                  compact: compact,
                 ),
+                for (final suit in Suit.values)
+                  Padding(
+                    padding: EdgeInsets.only(left: compact ? 4 : 6),
+                    child: _suitChip(suit, compact),
+                  ),
               ],
             ),
           ],
-          const SizedBox(height: 8),
+          SizedBox(height: compact ? 2 : 6),
           Wrap(
-            spacing: 10,
-            children: [
-              for (final suit in Suit.values)
-                ChoiceChip(
-                  selected: _suit == suit,
-                  onSelected: (_) => setState(() => _suit = suit),
-                  backgroundColor: Colors.white10,
-                  selectedColor: Colors.amber,
-                  label: SuitIcon(
-                    suit,
-                    size: 22,
-                    color: _suit == suit ? suitColor(suit) : Colors.white,
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Wrap(
-            spacing: 10,
-            runSpacing: 8,
+            spacing: 8,
+            runSpacing: compact ? 2 : 4,
             alignment: WrapAlignment.center,
             children: [
               FilledButton(
-                style: _compactCallButton(),
+                style: _compactCallButton(compact: compact),
                 onPressed: canBidValue
                     ? () =>
                         widget.onCall(SuitBidCall(widget.seat, _suit, value))
@@ -189,29 +223,32 @@ class _BiddingPanelState extends State<BiddingPanel> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text('${value ~/ 10} '),
-                    SuitIcon(_suit, size: 14),
+                    SuitIcon(_suit, size: 13),
                   ],
                 ),
               ),
               FilledButton(
-                style: _compactCallButton(background: PilottaColors.wood600),
+                style: _compactCallButton(
+                    background: PilottaColors.wood600, compact: compact),
                 onPressed: canCallCapot
                     ? () => widget.onCall(CapotCall(widget.seat, _suit))
                     : null,
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
-                  children: [const Text('Καπό '), SuitIcon(_suit, size: 14)],
+                  children: [const Text('Καπό '), SuitIcon(_suit, size: 13)],
                 ),
               ),
               if (_canDouble)
                 FilledButton(
-                  style: _compactCallButton(background: Colors.orange.shade800),
+                  style: _compactCallButton(
+                      background: Colors.orange.shade800, compact: compact),
                   onPressed: () => widget.onCall(DoubleCall(widget.seat)),
                   child: const Text('Κλειστό'),
                 ),
               if (_canRedouble)
                 FilledButton(
-                  style: _compactCallButton(background: Colors.red.shade900),
+                  style: _compactCallButton(
+                      background: Colors.red.shade900, compact: compact),
                   onPressed: () => widget.onCall(RedoubleCall(widget.seat)),
                   child: const Text('Ανοιχτό'),
                 ),
@@ -219,10 +256,11 @@ class _BiddingPanelState extends State<BiddingPanel> {
                 onPressed: () => widget.onCall(PassCall(widget.seat)),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: Colors.white,
-                  minimumSize: const Size(0, 36),
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: PilottaSpacing.sm + 2),
-                  textStyle: PilottaTypography.label.copyWith(fontSize: 13),
+                  minimumSize: Size(0, compact ? 25 : 34),
+                  padding: EdgeInsets.symmetric(
+                      horizontal: PilottaSpacing.sm, vertical: compact ? 1 : 4),
+                  textStyle: PilottaTypography.label
+                      .copyWith(fontSize: compact ? 11 : 13),
                 ),
                 child: const Text('Πάσο'),
               ),
