@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import 'screens/home_screen.dart';
@@ -7,6 +8,13 @@ import 'theme/pilotta_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // The table layout is landscape-only end to end (see the platform-level
+  // locks in AndroidManifest.xml/Info.plist) — this call is what flips a
+  // device that's already portrait at launch.
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.landscapeLeft,
+    DeviceOrientation.landscapeRight,
+  ]);
   final settings = await AppSettings.load();
   runApp(PilottaApp(settings: settings));
 }
